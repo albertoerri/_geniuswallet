@@ -126,31 +126,54 @@ class _CreateWalletConfigScreenState extends State<CreateWalletConfigScreen> {
                       ),
                       const SizedBox(height: 8),
 
-                      // Wallet Name Input
-                      Container(
-                        height: 52,
-                        decoration: BoxDecoration(
-                          color: Colors.white,
-                          borderRadius: BorderRadius.circular(12),
-                          border: Border.all(color: const Color(0xFFE2E8F0)),
+                      // Wallet Name Input (clean, direct styled, no double borders)
+                      TextField(
+                        controller: _nameController,
+                        style: const TextStyle(
+                          fontSize: 16,
+                          fontWeight: FontWeight.w600,
+                          color: Color(0xFF1E293B),
                         ),
-                        padding: const EdgeInsets.symmetric(horizontal: 16),
-                        child: TextField(
-                          controller: _nameController,
-                          decoration: const InputDecoration(
-                            hintText: 'Please input wallet name',
-                            hintStyle: TextStyle(
-                              fontSize: 14,
-                              color: Color(0xFF94A3B8),
-                            ),
-                            border: InputBorder.none,
-                            isDense: true,
+                        onChanged: (_) => setState(() {
+                          if (_errorMessage != null) _errorMessage = null;
+                        }),
+                        decoration: InputDecoration(
+                          hintText: 'Please input wallet name',
+                          hintStyle: const TextStyle(
+                            fontSize: 15,
+                            fontWeight: FontWeight.w400,
+                            color: Color(0xFF94A3B8),
                           ),
+                          filled: true,
+                          fillColor: Colors.white,
+                          contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 15),
+                          border: OutlineInputBorder(
+                            borderRadius: BorderRadius.circular(12),
+                            borderSide: const BorderSide(color: Color(0xFFE2E8F0)),
+                          ),
+                          enabledBorder: OutlineInputBorder(
+                            borderRadius: BorderRadius.circular(12),
+                            borderSide: const BorderSide(color: Color(0xFFE2E8F0)),
+                          ),
+                          focusedBorder: OutlineInputBorder(
+                            borderRadius: BorderRadius.circular(12),
+                            borderSide: const BorderSide(color: Color(0xFF2563EB), width: 1.5),
+                          ),
+                          suffixIcon: _nameController.text.isNotEmpty
+                              ? IconButton(
+                                  icon: const Icon(Icons.cancel_rounded, size: 20, color: Color(0xFF94A3B8)),
+                                  onPressed: () {
+                                    setState(() {
+                                      _nameController.clear();
+                                    });
+                                  },
+                                )
+                              : null,
                         ),
                       ),
 
                       if (_errorMessage != null) ...[
-                        const SizedBox(height: 12),
+                        const SizedBox(height: 8),
                         Text(
                           _errorMessage!,
                           style: const TextStyle(

@@ -5,6 +5,7 @@ import '../../core/constants/app_styles.dart';
 import '../../core/utils/formatters.dart';
 import '../controllers/wallet_controller.dart';
 import '../widgets/custom_card.dart';
+import 'auth/set_master_password_screen.dart';
 import 'network/select_network_screen.dart';
 import 'swap/swap_screen.dart';
 
@@ -142,10 +143,14 @@ class MeScreen extends StatelessWidget {
                   const Divider(height: 1, indent: 56, endIndent: 16),
                   ListTile(
                     leading: const Icon(Icons.security_rounded, color: AppColors.primary),
-                    title: const Text('Security & Vault', style: TextStyle(fontWeight: FontWeight.w600)),
-                    subtitle: const Text('Hardware-backed encryption'),
+                    title: const Text('Security & Password', style: TextStyle(fontWeight: FontWeight.w600)),
+                    subtitle: const Text('Master Password & Vault Settings'),
                     trailing: const Icon(Icons.chevron_right_rounded, color: AppColors.textMuted),
-                    onTap: () {},
+                    onTap: () {
+                      Navigator.of(context).push(
+                        MaterialPageRoute(builder: (_) => const SetMasterPasswordScreen(isImport: false)),
+                      );
+                    },
                   ),
                   const Divider(height: 1, indent: 56, endIndent: 16),
                   ListTile(

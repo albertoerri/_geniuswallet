@@ -311,31 +311,46 @@ class _ImportWalletScreenState extends State<ImportWalletScreen> {
                     const SizedBox(height: 8),
 
                     // Wallet Name Input Box
-                    Container(
-                      decoration: BoxDecoration(
-                        color: Colors.white,
-                        borderRadius: BorderRadius.circular(12),
-                        border: Border.all(color: const Color(0xFFE2E8F0)),
+                    TextField(
+                      controller: _nameController,
+                      style: const TextStyle(
+                        fontSize: 16,
+                        fontWeight: FontWeight.w600,
+                        color: Color(0xFF1E293B),
                       ),
-                      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 2),
-                      child: TextField(
-                        controller: _nameController,
-                        style: const TextStyle(
+                      onChanged: (_) => setState(() {}),
+                      decoration: InputDecoration(
+                        hintText: _isInitializingName ? 'Loading...' : '${widget.network.defaultNamePrefix}-1',
+                        hintStyle: const TextStyle(
                           fontSize: 15,
-                          fontWeight: FontWeight.w500,
-                          color: Color(0xFF1E293B),
+                          fontWeight: FontWeight.w400,
+                          color: Color(0xFF94A3B8),
                         ),
-                        decoration: InputDecoration(
-                          hintText: _isInitializingName ? 'Loading...' : '${widget.network.defaultNamePrefix}-1',
-                          hintStyle: const TextStyle(
-                            fontSize: 14,
-                            color: Color(0xFF94A3B8),
-                          ),
-                          border: InputBorder.none,
-                          enabledBorder: InputBorder.none,
-                          focusedBorder: InputBorder.none,
-                          filled: false,
+                        filled: true,
+                        fillColor: Colors.white,
+                        contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 15),
+                        border: OutlineInputBorder(
+                          borderRadius: BorderRadius.circular(12),
+                          borderSide: const BorderSide(color: Color(0xFFE2E8F0)),
                         ),
+                        enabledBorder: OutlineInputBorder(
+                          borderRadius: BorderRadius.circular(12),
+                          borderSide: const BorderSide(color: Color(0xFFE2E8F0)),
+                        ),
+                        focusedBorder: OutlineInputBorder(
+                          borderRadius: BorderRadius.circular(12),
+                          borderSide: const BorderSide(color: Color(0xFF2563EB), width: 1.5),
+                        ),
+                        suffixIcon: _nameController.text.isNotEmpty
+                            ? IconButton(
+                                icon: const Icon(Icons.cancel_rounded, size: 20, color: Color(0xFF94A3B8)),
+                                onPressed: () {
+                                  setState(() {
+                                    _nameController.clear();
+                                  });
+                                },
+                              )
+                            : null,
                       ),
                     ),
 
