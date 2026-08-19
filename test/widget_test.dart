@@ -1,30 +1,75 @@
-// This is a basic Flutter widget test.
-//
-// To perform an interaction with a widget in your test, use the WidgetTester
-// utility in the flutter_test package. For example, you can send tap and scroll
-// gestures. You can also use WidgetTester to find child widgets in the widget
-// tree, read text, and verify that the values of widget properties are correct.
-
-import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
+import 'package:flutter/material.dart';
+import 'package:provider/provider.dart';
+import 'package:shared_preferences/shared_preferences.dart';
+import 'package:geniuswallet/core/theme/app_theme.dart';
+import 'package:geniuswallet/presentation/controllers/network_controller.dart';
+import 'package:geniuswallet/presentation/controllers/wallet_controller.dart';
+import 'package:geniuswallet/presentation/screens/main_navigation_screen.dart';
+import 'package:geniuswallet/repositories/network_repository.dart';
+import 'package:geniuswallet/repositories/wallet_repository.dart';
+import 'package:geniuswallet/services/crypto_key_service.dart';
+import 'package:geniuswallet/services/network_service.dart';
+import 'package:geniuswallet/services/wallet_service.dart';
+import 'package:geniuswallet/storage/local_storage_service.dart';
+import 'package:geniuswallet/storage/secure_storage_service.dart';
 
-import 'package:geniuswallet/main.dart';
+import 'package:geniuswallet/presentation/controllers/asset_controller.dart';
+import 'package:geniuswallet/repositories/asset_repository.dart';
+import 'package:geniuswallet/services/asset_service.dart';
 
 void main() {
-  testWidgets('Counter increments smoke test', (WidgetTester tester) async {
-    // Build our app and trigger a frame.
-    await tester.pumpWidget(const MyApp());
+  testWidgets('App renders WelcomeScreen on initial launch when no wallets exist', (tester) async {
+    SharedPreferences.setMockInitialValues({});
+    final sharedPrefs = await SharedPreferences.getInstance();
+    final localStorage = LocalStorageService(sharedPrefs);
+    final secureStorage = SecureStorageService();
+    final cryptoService = CryptoKeyService();
+    final networkService = NetworkService();
+    final walletService = WalletService(cryptoService: cryptoService);
+    final assetService = AssetService();
 
-    // Verify that our counter starts at 0.
-    expect(find.text('0'), findsOneWidget);
-    expect(find.text('1'), findsNothing);
+    final networkRepo = NetworkRepository(
+      networkService: networkService,
+      localStorageService: localStorage,
+    );
+    final walletRepo = WalletRepository(
+      localStorageService: localStorage,
+      secureStorageService: secureStorage,
+    );
+    final assetRepo = AssetRepository(assetService: assetService);
 
-    // Tap the '+' icon and trigger a frame.
-    await tester.tap(find.byIcon(Icons.add));
-    await tester.pump();
+    await tester.pumpWidget(
+      MultiProvider(
+        providers: [
+          ChangeNotifierProvider(create: (_) => NetworkController(networkRepo)),
+          ChangeNotifierProvider(
+            create: (_) => WalletController(
+              repository: walletRepo,
+              walletService: walletService,
+            ),
+          ),
+          ChangeNotifierProvider(create: (_) => AssetController(repository: assetRepo)),
+        ],
+        child: MaterialApp(
+          theme: AppTheme.lightTheme,
+          home: const MainNavigationScreen(),
+        ),
+      ),
+    );
 
-    // Verify that our counter has incremented.
-    expect(find.text('0'), findsNothing);
-    expect(find.text('1'), findsOneWidget);
+    await tester.pumpAndSettle();
+
+    // Verify Welcome screen text & actions matching TokenPocket
+    expect(find.text('Your Multi-chain Wallet, Safe & Easy'), findsOneWidget);
+    expect(find.text('I have an account'), findsOneWidget);
+    expect(find.text('No accounts'), findsOneWidget);
+
+    // Verify 5 bottom navigation tabs
+    expect(find.text('Assets'), findsOneWidget);
+    expect(find.text('Market'), findsOneWidget);
+    expect(find.text('Trade'), findsOneWidget);
+    expect(find.text('Discover'), findsOneWidget);
+    expect(find.text('Me'), findsOneWidget);
   });
 }
