@@ -3,6 +3,8 @@ import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:geniuswallet/core/theme/app_theme.dart';
+import 'package:geniuswallet/presentation/controllers/language_controller.dart';
+import 'package:geniuswallet/presentation/controllers/market_controller.dart';
 import 'package:geniuswallet/presentation/controllers/network_controller.dart';
 import 'package:geniuswallet/presentation/controllers/wallet_controller.dart';
 import 'package:geniuswallet/presentation/screens/main_navigation_screen.dart';
@@ -42,6 +44,7 @@ void main() {
     await tester.pumpWidget(
       MultiProvider(
         providers: [
+          ChangeNotifierProvider(create: (_) => LanguageController(localStorage)),
           ChangeNotifierProvider(create: (_) => NetworkController(networkRepo)),
           ChangeNotifierProvider(
             create: (_) => WalletController(
@@ -50,6 +53,7 @@ void main() {
             ),
           ),
           ChangeNotifierProvider(create: (_) => AssetController(repository: assetRepo)),
+          ChangeNotifierProvider(create: (_) => MarketController(localStorage)),
         ],
         child: MaterialApp(
           theme: AppTheme.lightTheme,

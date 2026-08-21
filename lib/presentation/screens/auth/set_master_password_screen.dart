@@ -1,5 +1,7 @@
 import 'package:flutter/material.dart';
+import 'package:provider/provider.dart';
 import '../../../core/constants/app_colors.dart';
+import '../../controllers/language_controller.dart';
 import '../network/select_network_screen.dart';
 
 class SetMasterPasswordScreen extends StatefulWidget {
@@ -30,26 +32,27 @@ class _SetMasterPasswordScreenState extends State<SetMasterPasswordScreen> {
   }
 
   void _onConfirm() {
+    final lang = context.read<LanguageController>();
     final password = _passwordController.text;
     final confirm = _confirmPasswordController.text;
 
     if (password.length < 8) {
       setState(() {
-        _errorMessage = 'Password must be at least 8 characters';
+        _errorMessage = lang.tr('pwd_hint');
       });
       return;
     }
 
     if (password != confirm) {
       setState(() {
-        _errorMessage = 'Passwords do not match';
+        _errorMessage = lang.isChinese ? '两次输入的密码不一致' : 'Passwords do not match';
       });
       return;
     }
 
     if (!_agreedToTerms) {
       setState(() {
-        _errorMessage = 'Please agree to the Service Agreement';
+        _errorMessage = lang.tr('must_agree_terms');
       });
       return;
     }
@@ -67,6 +70,8 @@ class _SetMasterPasswordScreenState extends State<SetMasterPasswordScreen> {
 
   @override
   Widget build(BuildContext context) {
+    final lang = context.watch<LanguageController>();
+
     return Scaffold(
       backgroundColor: const Color(0xFFF7F8FA),
       appBar: AppBar(
@@ -91,9 +96,9 @@ class _SetMasterPasswordScreenState extends State<SetMasterPasswordScreen> {
                       const SizedBox(height: 8),
 
                       // Title
-                      const Text(
-                        'Set Master Password',
-                        style: TextStyle(
+                      Text(
+                        lang.tr('set_master_pwd'),
+                        style: const TextStyle(
                           fontSize: 24,
                           fontWeight: FontWeight.w700,
                           color: Color(0xFF1E293B),
@@ -103,9 +108,9 @@ class _SetMasterPasswordScreenState extends State<SetMasterPasswordScreen> {
                       const SizedBox(height: 10),
 
                       // Subtitle
-                      const Text(
-                        "Use one password to unlock all your wallets. You won't need to set a separate password for each wallet.",
-                        style: TextStyle(
+                      Text(
+                        lang.tr('set_master_pwd_sub'),
+                        style: const TextStyle(
                           fontSize: 13,
                           color: Color(0xFF64748B),
                           height: 1.4,
@@ -114,9 +119,9 @@ class _SetMasterPasswordScreenState extends State<SetMasterPasswordScreen> {
                       const SizedBox(height: 28),
 
                       // Set Password Label
-                      const Text(
-                        'Set Password',
-                        style: TextStyle(
+                      Text(
+                        lang.tr('set_pwd_label'),
+                        style: const TextStyle(
                           fontSize: 14,
                           fontWeight: FontWeight.w600,
                           color: Color(0xFF1E293B),
@@ -139,9 +144,9 @@ class _SetMasterPasswordScreenState extends State<SetMasterPasswordScreen> {
                           if (_errorMessage != null) _errorMessage = null;
                         }),
                         decoration: InputDecoration(
-                          hintText: 'Enter 8-128 characters',
+                          hintText: lang.tr('pwd_hint'),
                           hintStyle: const TextStyle(
-                            fontSize: 15,
+                            fontSize: 14,
                             fontWeight: FontWeight.w400,
                             color: Color(0xFF94A3B8),
                             letterSpacing: 0.0,
@@ -149,17 +154,18 @@ class _SetMasterPasswordScreenState extends State<SetMasterPasswordScreen> {
                           filled: true,
                           fillColor: Colors.white,
                           contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 16),
+                          prefixIcon: const Icon(Icons.lock_outline_rounded, size: 20, color: Color(0xFF64748B)),
                           border: OutlineInputBorder(
-                            borderRadius: BorderRadius.circular(12),
-                            borderSide: const BorderSide(color: Color(0xFFE2E8F0)),
+                            borderRadius: BorderRadius.circular(14),
+                            borderSide: const BorderSide(color: Color(0xFFCBD5E1), width: 1.2),
                           ),
                           enabledBorder: OutlineInputBorder(
-                            borderRadius: BorderRadius.circular(12),
-                            borderSide: const BorderSide(color: Color(0xFFE2E8F0)),
+                            borderRadius: BorderRadius.circular(14),
+                            borderSide: const BorderSide(color: Color(0xFFCBD5E1), width: 1.2),
                           ),
                           focusedBorder: OutlineInputBorder(
-                            borderRadius: BorderRadius.circular(12),
-                            borderSide: const BorderSide(color: Color(0xFF2563EB), width: 1.5),
+                            borderRadius: BorderRadius.circular(14),
+                            borderSide: const BorderSide(color: Color(0xFF2563EB), width: 2.0),
                           ),
                           suffixIcon: IconButton(
                             icon: Icon(
@@ -180,16 +186,16 @@ class _SetMasterPasswordScreenState extends State<SetMasterPasswordScreen> {
 
                       // Password Strength Indicator
                       if (_passwordController.text.isNotEmpty) ...[
-                        const SizedBox(height: 10),
-                        _buildPasswordStrengthBar(_passwordController.text),
+                        const SizedBox(height: 8),
+                        _buildPasswordStrengthBar(lang, _passwordController.text),
                       ],
 
                       const SizedBox(height: 20),
 
                       // Confirm Password Label
-                      const Text(
-                        'Confirm Password',
-                        style: TextStyle(
+                      Text(
+                        lang.tr('confirm_pwd_label'),
+                        style: const TextStyle(
                           fontSize: 14,
                           fontWeight: FontWeight.w600,
                           color: Color(0xFF1E293B),
@@ -212,9 +218,9 @@ class _SetMasterPasswordScreenState extends State<SetMasterPasswordScreen> {
                           if (_errorMessage != null) _errorMessage = null;
                         }),
                         decoration: InputDecoration(
-                          hintText: 'Please confirm password',
+                          hintText: lang.tr('confirm_pwd_hint'),
                           hintStyle: const TextStyle(
-                            fontSize: 15,
+                            fontSize: 14,
                             fontWeight: FontWeight.w400,
                             color: Color(0xFF94A3B8),
                             letterSpacing: 0.0,
@@ -222,17 +228,18 @@ class _SetMasterPasswordScreenState extends State<SetMasterPasswordScreen> {
                           filled: true,
                           fillColor: Colors.white,
                           contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 16),
+                          prefixIcon: const Icon(Icons.lock_outline_rounded, size: 20, color: Color(0xFF64748B)),
                           border: OutlineInputBorder(
-                            borderRadius: BorderRadius.circular(12),
-                            borderSide: const BorderSide(color: Color(0xFFE2E8F0)),
+                            borderRadius: BorderRadius.circular(14),
+                            borderSide: const BorderSide(color: Color(0xFFCBD5E1), width: 1.2),
                           ),
                           enabledBorder: OutlineInputBorder(
-                            borderRadius: BorderRadius.circular(12),
-                            borderSide: const BorderSide(color: Color(0xFFE2E8F0)),
+                            borderRadius: BorderRadius.circular(14),
+                            borderSide: const BorderSide(color: Color(0xFFCBD5E1), width: 1.2),
                           ),
                           focusedBorder: OutlineInputBorder(
-                            borderRadius: BorderRadius.circular(12),
-                            borderSide: const BorderSide(color: Color(0xFF2563EB), width: 1.5),
+                            borderRadius: BorderRadius.circular(14),
+                            borderSide: const BorderSide(color: Color(0xFF2563EB), width: 2.0),
                           ),
                           suffixIcon: IconButton(
                             icon: Icon(
@@ -265,7 +272,7 @@ class _SetMasterPasswordScreenState extends State<SetMasterPasswordScreen> {
 
                       const Spacer(),
 
-                      // Agreement Row
+                      // Agreement Row (Terms of Service)
                       GestureDetector(
                         onTap: () {
                           setState(() {
@@ -292,9 +299,9 @@ class _SetMasterPasswordScreenState extends State<SetMasterPasswordScreen> {
                                   : null,
                             ),
                             const SizedBox(width: 8),
-                            const Text(
-                              'Read & agree with ',
-                              style: TextStyle(
+                            Text(
+                              '${lang.tr('read_agree')} ',
+                              style: const TextStyle(
                                 fontSize: 13,
                                 color: Color(0xFF64748B),
                               ),
@@ -302,12 +309,12 @@ class _SetMasterPasswordScreenState extends State<SetMasterPasswordScreen> {
                             GestureDetector(
                               onTap: () {
                                 ScaffoldMessenger.of(context).showSnackBar(
-                                  const SnackBar(content: Text('Service Agreement')),
+                                  SnackBar(content: Text(lang.tr('terms_of_service'))),
                                 );
                               },
-                              child: const Text(
-                                'Service Agreement',
-                                style: TextStyle(
+                              child: Text(
+                                lang.tr('terms_of_service'),
+                                style: const TextStyle(
                                   fontSize: 13,
                                   color: Color(0xFF2563EB),
                                   fontWeight: FontWeight.w500,
@@ -333,9 +340,9 @@ class _SetMasterPasswordScreenState extends State<SetMasterPasswordScreen> {
                               borderRadius: BorderRadius.circular(12),
                             ),
                           ),
-                          child: const Text(
-                            'Confirm',
-                            style: TextStyle(
+                          child: Text(
+                            lang.tr('btn_confirm'),
+                            style: const TextStyle(
                               fontSize: 16,
                               fontWeight: FontWeight.w600,
                             ),
@@ -354,7 +361,7 @@ class _SetMasterPasswordScreenState extends State<SetMasterPasswordScreen> {
     );
   }
 
-  Widget _buildPasswordStrengthBar(String password) {
+  Widget _buildPasswordStrengthBar(LanguageController lang, String password) {
     int strength = 0;
     if (password.length >= 8) strength++;
     if (password.length >= 10 && RegExp(r'[0-9]').hasMatch(password)) strength++;
@@ -365,16 +372,16 @@ class _SetMasterPasswordScreenState extends State<SetMasterPasswordScreen> {
     String label;
     if (strength <= 1) {
       color = const Color(0xFFEF4444);
-      label = 'Weak';
+      label = lang.tr('pwd_strength_weak');
     } else if (strength == 2) {
       color = const Color(0xFFF59E0B);
-      label = 'Fair';
+      label = lang.tr('pwd_strength_fair');
     } else if (strength == 3) {
       color = const Color(0xFF3B82F6);
-      label = 'Good';
+      label = lang.tr('pwd_strength_good');
     } else {
       color = const Color(0xFF10B981);
-      label = 'Strong';
+      label = lang.tr('pwd_strength_strong');
     }
 
     return Column(

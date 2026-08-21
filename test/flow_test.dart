@@ -5,6 +5,8 @@ import 'package:shared_preferences/shared_preferences.dart';
 import 'package:geniuswallet/core/theme/app_theme.dart';
 import 'package:geniuswallet/domain/models/wallet.dart';
 import 'package:geniuswallet/presentation/controllers/asset_controller.dart';
+import 'package:geniuswallet/presentation/controllers/language_controller.dart';
+import 'package:geniuswallet/presentation/controllers/market_controller.dart';
 import 'package:geniuswallet/presentation/controllers/network_controller.dart';
 import 'package:geniuswallet/presentation/controllers/wallet_controller.dart';
 import 'package:geniuswallet/presentation/screens/main_navigation_screen.dart';
@@ -50,13 +52,16 @@ void main() {
       walletService: walletService,
     );
     final assetController = AssetController(repository: assetRepo);
+    final languageController = LanguageController(localStorage);
 
     await tester.pumpWidget(
       MultiProvider(
         providers: [
+          ChangeNotifierProvider.value(value: languageController),
           ChangeNotifierProvider.value(value: networkController),
           ChangeNotifierProvider.value(value: walletController),
           ChangeNotifierProvider.value(value: assetController),
+          ChangeNotifierProvider(create: (_) => MarketController(localStorage)),
         ],
         child: MaterialApp(
           theme: AppTheme.lightTheme,
@@ -81,7 +86,7 @@ void main() {
     await tester.enterText(pwFields.at(1), 'password123');
     await tester.pumpAndSettle();
 
-    await tester.tap(find.text('Read & agree with '));
+    await tester.tap(find.textContaining('Read & agree').first);
     await tester.pumpAndSettle();
 
     await tester.tap(find.text('Confirm'));
@@ -110,19 +115,18 @@ void main() {
     await tester.pumpAndSettle();
 
     expect(find.widgetWithText(AppBar, 'Import Wallet'), findsOneWidget);
-    expect(find.text('Phrase'), findsOneWidget);
+    expect(find.text('Recovery Phrase'), findsOneWidget);
     expect(find.text('Private Key'), findsOneWidget);
     expect(find.text('Keystore'), findsOneWidget);
 
     // Enter valid 64-hex EVM Private Key
     const testPrivKey = '4c0883a69102937d6231471b5dbb6204fe5129617082792ae468d01a3f36088a';
     final textFields = find.byType(TextField);
-    // First TextField is secret, second is wallet name
     await tester.enterText(textFields.first, testPrivKey);
     await tester.pumpAndSettle();
 
     // Check Terms / Service Agreement
-    await tester.tap(find.text('Read & agree with '));
+    await tester.tap(find.textContaining('Read & agree').first);
     await tester.pumpAndSettle();
 
     // Tap Import Wallet button
@@ -130,8 +134,8 @@ void main() {
     await tester.pumpAndSettle();
 
     // 7. Should navigate to Wallet Dashboard with active wallet!
-    expect(find.text('POL-1'), findsOneWidget);
-    expect(find.text('Click to switch node'), findsOneWidget);
+    expect(find.text('POL-1'), findsWidgets);
+    expect(find.text('Click to switch node'), findsNothing);
     expect(find.text('Send'), findsOneWidget);
     expect(find.text('Receive'), findsOneWidget);
     expect(find.text('Swap'), findsOneWidget);
@@ -169,13 +173,16 @@ void main() {
       walletService: walletService,
     );
     final assetController = AssetController(repository: assetRepo);
+    final languageController = LanguageController(localStorage);
 
     await tester.pumpWidget(
       MultiProvider(
         providers: [
+          ChangeNotifierProvider.value(value: languageController),
           ChangeNotifierProvider.value(value: networkController),
           ChangeNotifierProvider.value(value: walletController),
           ChangeNotifierProvider.value(value: assetController),
+          ChangeNotifierProvider(create: (_) => MarketController(localStorage)),
         ],
         child: MaterialApp(
           theme: AppTheme.lightTheme,
@@ -196,7 +203,7 @@ void main() {
     await tester.enterText(pwFields.at(1), 'password123');
     await tester.pumpAndSettle();
 
-    await tester.tap(find.text('Read & agree with '));
+    await tester.tap(find.textContaining('Read & agree').first);
     await tester.pumpAndSettle();
 
     await tester.tap(find.text('Confirm'));
@@ -217,14 +224,14 @@ void main() {
     await tester.pumpAndSettle();
 
     // Agree and Import
-    await tester.tap(find.text('Read & agree with '));
+    await tester.tap(find.textContaining('Read & agree').first);
     await tester.pumpAndSettle();
 
     await tester.tap(find.widgetWithText(ElevatedButton, 'Import Wallet'));
     await tester.pumpAndSettle();
 
     // Dashboard check
-    expect(find.text('POL-1'), findsOneWidget);
+    expect(find.text('POL-1'), findsWidgets);
     expect(find.text('Send'), findsOneWidget);
   });
 
@@ -259,13 +266,16 @@ void main() {
       walletService: walletService,
     );
     final assetController = AssetController(repository: assetRepo);
+    final languageController = LanguageController(localStorage);
 
     await tester.pumpWidget(
       MultiProvider(
         providers: [
+          ChangeNotifierProvider.value(value: languageController),
           ChangeNotifierProvider.value(value: networkController),
           ChangeNotifierProvider.value(value: walletController),
           ChangeNotifierProvider.value(value: assetController),
+          ChangeNotifierProvider(create: (_) => MarketController(localStorage)),
         ],
         child: MaterialApp(
           theme: AppTheme.lightTheme,
@@ -289,7 +299,7 @@ void main() {
     await tester.pumpAndSettle();
 
     // Agree to terms
-    await tester.tap(find.text('Read & agree with '));
+    await tester.tap(find.textContaining('Read & agree').first);
     await tester.pumpAndSettle();
 
     // Confirm Master Password
@@ -370,13 +380,16 @@ void main() {
     );
     await walletController.loadWallets();
     final assetController = AssetController(repository: assetRepo);
+    final languageController = LanguageController(localStorage);
 
     await tester.pumpWidget(
       MultiProvider(
         providers: [
+          ChangeNotifierProvider.value(value: languageController),
           ChangeNotifierProvider.value(value: networkController),
           ChangeNotifierProvider.value(value: walletController),
           ChangeNotifierProvider.value(value: assetController),
+          ChangeNotifierProvider(create: (_) => MarketController(localStorage)),
         ],
         child: MaterialApp(
           theme: AppTheme.lightTheme,
@@ -428,5 +441,101 @@ void main() {
     expect(find.text('Import Wallets'), findsOneWidget);
     expect(find.text('Recovery Phrase'), findsOneWidget);
     expect(find.text('Private Key'), findsOneWidget);
+  });
+
+  testWidgets('Drawer Network Filtering: only shows active networks and filters wallet list', (tester) async {
+    SharedPreferences.setMockInitialValues({});
+    final sharedPrefs = await SharedPreferences.getInstance();
+    final localStorage = LocalStorageService(sharedPrefs);
+    final secureStorage = MockSecureStorageService();
+    final cryptoService = CryptoKeyService();
+    final networkService = NetworkService();
+    final walletService = WalletService(cryptoService: cryptoService);
+    final assetService = AssetService();
+
+    final networkRepo = NetworkRepository(
+      networkService: networkService,
+      localStorageService: localStorage,
+    );
+    final walletRepo = WalletRepository(
+      localStorageService: localStorage,
+      secureStorageService: secureStorage,
+    );
+    final assetRepo = AssetRepository(assetService: assetService);
+
+    // Setup 2 Polygon wallets and 1 BNB Chain wallet
+    await walletRepo.saveWallet(
+      wallet: Wallet(
+        id: 'w-pol-1',
+        name: 'Polygon-Alpha',
+        address: '0x4c0883a69102937d6231471b5dbb6204fe512961',
+        networkId: 'polygon',
+        importType: WalletImportType.privateKey,
+        createdAt: DateTime.now(),
+        isBackedUp: true,
+      ),
+      secret: '0x4c0883a69102937d6231471b5dbb6204fe5129617082792ae468d01a3f3608a8',
+    );
+    await walletRepo.saveWallet(
+      wallet: Wallet(
+        id: 'w-pol-2',
+        name: 'Polygon-Beta',
+        address: '0x6d64b0f94ad511e405a76da059298ca30e1becc4',
+        networkId: 'polygon',
+        importType: WalletImportType.privateKey,
+        createdAt: DateTime.now(),
+        isBackedUp: true,
+      ),
+      secret: '0x6d64b0f94ad511e405a76da059298ca30e1becc41f71dfbc6b30fefc2ad05187',
+    );
+    await walletRepo.saveWallet(
+      wallet: Wallet(
+        id: 'w-bnb-1',
+        name: 'BNB-Gamma',
+        address: '0x7c852118294e51e653712a81e05800f419141751',
+        networkId: 'binancesmartchain',
+        importType: WalletImportType.privateKey,
+        createdAt: DateTime.now(),
+        isBackedUp: true,
+      ),
+      secret: '0x7c852118294e51e653712a81e05800f419141751be58f605c371e15141b007a6',
+    );
+
+    final networkController = NetworkController(networkRepo);
+    await networkController.loadNetworks();
+    final walletController = WalletController(
+      repository: walletRepo,
+      walletService: walletService,
+    );
+    await walletController.loadWallets();
+    final assetController = AssetController(repository: assetRepo);
+    final languageController = LanguageController(localStorage);
+
+    await tester.pumpWidget(
+      MultiProvider(
+        providers: [
+          ChangeNotifierProvider.value(value: languageController),
+          ChangeNotifierProvider.value(value: networkController),
+          ChangeNotifierProvider.value(value: walletController),
+          ChangeNotifierProvider.value(value: assetController),
+          ChangeNotifierProvider(create: (_) => MarketController(localStorage)),
+        ],
+        child: MaterialApp(
+          theme: AppTheme.lightTheme,
+          home: const MainNavigationScreen(),
+        ),
+      ),
+    );
+
+    await tester.pumpAndSettle();
+
+    // 1. Open Drawer
+    await tester.tap(find.byIcon(Icons.menu_rounded));
+    await tester.pumpAndSettle();
+
+    expect(find.text('Wallet List'), findsOneWidget);
+
+    // 2. Tapping Drawer Add Wallet button
+    expect(find.byKey(const Key('drawer_add_wallet_button')), findsOneWidget);
   });
 }

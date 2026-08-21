@@ -3,6 +3,8 @@ import 'package:provider/provider.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'core/theme/app_theme.dart';
 import 'presentation/controllers/asset_controller.dart';
+import 'presentation/controllers/language_controller.dart';
+import 'presentation/controllers/market_controller.dart';
 import 'presentation/controllers/network_controller.dart';
 import 'presentation/controllers/wallet_controller.dart';
 import 'presentation/screens/main_navigation_screen.dart';
@@ -45,6 +47,9 @@ void main() async {
     MultiProvider(
       providers: [
         ChangeNotifierProvider(
+          create: (_) => LanguageController(localStorageService),
+        ),
+        ChangeNotifierProvider(
           create: (_) => NetworkController(networkRepository),
         ),
         ChangeNotifierProvider(
@@ -55,6 +60,9 @@ void main() async {
         ),
         ChangeNotifierProvider(
           create: (_) => AssetController(repository: assetRepository),
+        ),
+        ChangeNotifierProvider(
+          create: (_) => MarketController(localStorageService),
         ),
       ],
       child: const GeniusWalletApp(),

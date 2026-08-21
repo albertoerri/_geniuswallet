@@ -6,6 +6,7 @@ import '../../../core/utils/formatters.dart';
 import '../../../domain/models/token.dart';
 import '../../../domain/models/wallet.dart';
 import '../../controllers/asset_controller.dart';
+import '../../controllers/language_controller.dart';
 import '../../controllers/network_controller.dart';
 import '../../controllers/wallet_controller.dart';
 import '../../widgets/crypto_icon.dart';
@@ -13,16 +14,25 @@ import '../../widgets/custom_card.dart';
 
 class SendScreen extends StatefulWidget {
   final Token? initialToken;
+  final String? initialRecipient;
+  final String? initialAmount;
+  final String? initialTokenSymbol;
 
-  const SendScreen({super.key, this.initialToken});
+  const SendScreen({
+    super.key,
+    this.initialToken,
+    this.initialRecipient,
+    this.initialAmount,
+    this.initialTokenSymbol,
+  });
 
   @override
   State<SendScreen> createState() => _SendScreenState();
 }
 
 class _SendScreenState extends State<SendScreen> {
-  final _addressController = TextEditingController();
-  final _amountController = TextEditingController();
+  late final TextEditingController _addressController;
+  late final TextEditingController _amountController;
   Token? _selectedToken;
   int _gasSpeed = 1; // 0: Slow, 1: Standard, 2: Fast
   bool _isSending = false;
@@ -30,6 +40,8 @@ class _SendScreenState extends State<SendScreen> {
   @override
   void initState() {
     super.initState();
+    _addressController = TextEditingController(text: widget.initialRecipient ?? '');
+    _amountController = TextEditingController(text: widget.initialAmount ?? '');
     _selectedToken = widget.initialToken;
   }
 
@@ -42,6 +54,7 @@ class _SendScreenState extends State<SendScreen> {
 
   @override
   Widget build(BuildContext context) {
+    final lang = context.watch<LanguageController>();
     final walletController = context.watch<WalletController>();
     final networkController = context.watch<NetworkController>();
     final assetController = context.watch<AssetController>();
@@ -49,8 +62,8 @@ class _SendScreenState extends State<SendScreen> {
 
     if (activeWallet == null) {
       return Scaffold(
-        appBar: AppBar(title: const Text('Send')),
-        body: const Center(child: Text('No active wallet')),
+        appBar: AppBar(title: Text(lang.tr('send_title'))),
+        body: Center(child: Text(lang.tr('no_active_wallet'))),
       );
     }
 
@@ -60,7 +73,16 @@ class _SendScreenState extends State<SendScreen> {
     );
 
     final tokens = assetController.tokens;
-    _selectedToken ??= tokens.isNotEmpty ? tokens.first : null;
+    if (_selectedToken == null && tokens.isNotEmpty) {
+      if (widget.initialTokenSymbol != null) {
+        _selectedToken = tokens.firstWhere(
+          (t) => t.symbol.toLowerCase() == widget.initialTokenSymbol!.toLowerCase(),
+          orElse: () => tokens.first,
+        );
+      } else {
+        _selectedToken = tokens.first;
+      }
+    }
 
     final double amount = double.tryParse(_amountController.text) ?? 0.0;
     final double tokenPrice = _selectedToken?.priceUsd ?? 0.0;
@@ -69,7 +91,10 @@ class _SendScreenState extends State<SendScreen> {
     return Scaffold(
       backgroundColor: const Color(0xFFF7F8FA),
       appBar: AppBar(
-        title: Text('Send on ${network.name}', style: const TextStyle(fontWeight: FontWeight.w600, fontSize: 17)),
+        title: Text(
+          lang.tr('send_on_network', params: {'network': network.name}),
+          style: const TextStyle(fontWeight: FontWeight.w600, fontSize: 17),
+        ),
         backgroundColor: Colors.white,
         elevation: 0,
         centerTitle: true,
@@ -84,22 +109,22 @@ class _SendScreenState extends State<SendScreen> {
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
             // Token Selector Card
-            _buildTokenSelectorCard(context, tokens),
+            _buildTokenSelectorCard(context, tokens, lang),
 
             const SizedBox(height: 16),
 
             // Recipient Address Card
-            _buildRecipientCard(context),
+            _buildRecipientCard(context, lang),
 
             const SizedBox(height: 16),
 
             // Amount Input Card
-            _buildAmountCard(context, fiatEstimated),
+            _buildAmountCard(context, fiatEstimated, lang),
 
             const SizedBox(height: 16),
 
             // Gas / Fee Selector Card
-            _buildGasFeeCard(context, network.symbol),
+            _buildGasFeeCard(context, network.symbol, lang),
 
             const SizedBox(height: 24),
 
@@ -115,16 +140,16 @@ class _SendScreenState extends State<SendScreen> {
                 ),
                 onPressed: _isSending
                     ? null
-                    : () => _handleConfirmSend(context, activeWallet, network.name),
+                    : () => _handleConfirmSend(context, activeWallet, network.name, lang),
                 child: _isSending
                     ? const SizedBox(
                         width: 22,
                         height: 22,
                         child: CircularProgressIndicator(color: Colors.white, strokeWidth: 2.5),
                       )
-                    : const Text(
-                        'Next',
-                        style: TextStyle(color: Colors.white, fontSize: 16, fontWeight: FontWeight.w600),
+                    : Text(
+                        lang.tr('next'),
+                        style: const TextStyle(color: Colors.white, fontSize: 16, fontWeight: FontWeight.w600),
                       ),
               ),
             ),
@@ -136,11 +161,11 @@ class _SendScreenState extends State<SendScreen> {
     );
   }
 
-  Widget _buildTokenSelectorCard(BuildContext context, List<Token> tokens) {
+  Widget _buildTokenSelectorCard(BuildContext context, List<Token> tokens, LanguageController lang) {
     return CustomCard(
       padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
       child: InkWell(
-        onTap: () => _showTokenPickerSheet(context, tokens),
+        onTap: () => _showTokenPickerSheet(context, tokens, lang),
         child: Row(
           children: [
             CryptoIcon(networkId: _selectedToken?.symbol ?? 'ETH', size: 36),
@@ -150,12 +175,12 @@ class _SendScreenState extends State<SendScreen> {
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
                   Text(
-                    _selectedToken?.name ?? 'Select Token',
+                    _selectedToken?.name ?? lang.tr('select_token'),
                     style: const TextStyle(fontSize: 15, fontWeight: FontWeight.w700, color: Color(0xFF1E293B)),
                   ),
                   const SizedBox(height: 2),
                   Text(
-                    'Balance: ${_selectedToken?.formattedBalance ?? '0.00'} ${_selectedToken?.symbol ?? ''}',
+                    '${lang.tr('balance_prefix')}${_selectedToken?.formattedBalance ?? '0.00'} ${_selectedToken?.symbol ?? ''}',
                     style: const TextStyle(fontSize: 12, color: Color(0xFF64748B)),
                   ),
                 ],
@@ -168,29 +193,37 @@ class _SendScreenState extends State<SendScreen> {
     );
   }
 
-  Widget _buildRecipientCard(BuildContext context) {
+  Widget _buildRecipientCard(BuildContext context, LanguageController lang) {
     return CustomCard(
       padding: const EdgeInsets.all(16),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          const Text(
-            'Recipient Address',
-            style: TextStyle(fontSize: 13, fontWeight: FontWeight.w600, color: Color(0xFF475569)),
+          Text(
+            lang.tr('recipient_address'),
+            style: const TextStyle(fontSize: 13, fontWeight: FontWeight.w600, color: Color(0xFF475569)),
           ),
           const SizedBox(height: 8),
           TextField(
             controller: _addressController,
-            style: const TextStyle(fontSize: 14, fontFamily: 'monospace', fontWeight: FontWeight.w500),
+            style: const TextStyle(fontSize: 14, fontFamily: 'monospace', fontWeight: FontWeight.w600, color: Color(0xFF0F172A)),
             decoration: InputDecoration(
-              hintText: 'Enter or paste wallet address (0x...)',
-              hintStyle: const TextStyle(fontSize: 13, fontFamily: 'sans-serif', color: Color(0xFF94A3B8)),
+              hintText: '0x...',
+              hintStyle: const TextStyle(fontSize: 14, fontFamily: 'sans-serif', color: Color(0xFF94A3B8)),
               filled: true,
-              fillColor: const Color(0xFFF8FAFC),
-              contentPadding: const EdgeInsets.symmetric(horizontal: 12, vertical: 12),
+              fillColor: Colors.white,
+              contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 16),
               border: OutlineInputBorder(
-                borderRadius: BorderRadius.circular(10),
-                borderSide: const BorderSide(color: Color(0xFFE2E8F0)),
+                borderRadius: BorderRadius.circular(14),
+                borderSide: const BorderSide(color: Color(0xFFCBD5E1), width: 1.2),
+              ),
+              enabledBorder: OutlineInputBorder(
+                borderRadius: BorderRadius.circular(14),
+                borderSide: const BorderSide(color: Color(0xFFCBD5E1), width: 1.2),
+              ),
+              focusedBorder: OutlineInputBorder(
+                borderRadius: BorderRadius.circular(14),
+                borderSide: const BorderSide(color: Color(0xFF2563EB), width: 2.0),
               ),
               suffixIcon: Row(
                 mainAxisSize: MainAxisSize.min,
@@ -205,23 +238,24 @@ class _SendScreenState extends State<SendScreen> {
                       }
                     },
                     child: Container(
-                      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
-                      margin: const EdgeInsets.only(right: 4),
+                      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+                      margin: const EdgeInsets.only(right: 6),
                       decoration: BoxDecoration(
                         color: const Color(0xFFEFF6FF),
-                        borderRadius: BorderRadius.circular(6),
+                        borderRadius: BorderRadius.circular(8),
+                        border: Border.all(color: const Color(0xFFBFDBFE)),
                       ),
-                      child: const Text(
-                        'Paste',
-                        style: TextStyle(fontSize: 12, fontWeight: FontWeight.w600, color: Color(0xFF2563EB)),
+                      child: Text(
+                        lang.tr('paste_address'),
+                        style: const TextStyle(fontSize: 12, fontWeight: FontWeight.w700, color: Color(0xFF2563EB)),
                       ),
                     ),
                   ),
                   IconButton(
-                    icon: const Icon(Icons.qr_code_scanner_rounded, size: 20, color: Color(0xFF64748B)),
+                    icon: const Icon(Icons.qr_code_scanner_rounded, size: 22, color: Color(0xFF475569)),
                     onPressed: () {
                       ScaffoldMessenger.of(context).showSnackBar(
-                        const SnackBar(content: Text('Scan QR code for address')),
+                        SnackBar(content: Text(lang.tr('scan_for_address'))),
                       );
                     },
                   ),
@@ -234,7 +268,7 @@ class _SendScreenState extends State<SendScreen> {
     );
   }
 
-  Widget _buildAmountCard(BuildContext context, double fiatEstimated) {
+  Widget _buildAmountCard(BuildContext context, double fiatEstimated, LanguageController lang) {
     return CustomCard(
       padding: const EdgeInsets.all(16),
       child: Column(
@@ -243,12 +277,12 @@ class _SendScreenState extends State<SendScreen> {
           Row(
             mainAxisAlignment: MainAxisAlignment.spaceBetween,
             children: [
-              const Text(
-                'Transfer Amount',
-                style: TextStyle(fontSize: 13, fontWeight: FontWeight.w600, color: Color(0xFF475569)),
+              Text(
+                lang.tr('transfer_amount'),
+                style: const TextStyle(fontSize: 13, fontWeight: FontWeight.w600, color: Color(0xFF475569)),
               ),
               Text(
-                'Available: ${_selectedToken?.formattedBalance ?? '0.00'}',
+                '${lang.tr('available')}: ${_selectedToken?.formattedBalance ?? '0.00'}',
                 style: const TextStyle(fontSize: 12, color: Color(0xFF64748B)),
               ),
             ],
@@ -257,17 +291,25 @@ class _SendScreenState extends State<SendScreen> {
           TextField(
             controller: _amountController,
             keyboardType: const TextInputType.numberWithOptions(decimal: true),
-            style: const TextStyle(fontSize: 22, fontWeight: FontWeight.w700, color: Color(0xFF1E293B)),
+            style: const TextStyle(fontSize: 24, fontWeight: FontWeight.w700, color: Color(0xFF0F172A)),
             onChanged: (_) => setState(() {}),
             decoration: InputDecoration(
               hintText: '0.00',
-              hintStyle: const TextStyle(fontSize: 22, color: Color(0xFFCBD5E1)),
+              hintStyle: const TextStyle(fontSize: 24, fontWeight: FontWeight.w700, color: Color(0xFFCBD5E1)),
               filled: true,
-              fillColor: const Color(0xFFF8FAFC),
-              contentPadding: const EdgeInsets.symmetric(horizontal: 12, vertical: 12),
+              fillColor: Colors.white,
+              contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 16),
               border: OutlineInputBorder(
-                borderRadius: BorderRadius.circular(10),
-                borderSide: const BorderSide(color: Color(0xFFE2E8F0)),
+                borderRadius: BorderRadius.circular(14),
+                borderSide: const BorderSide(color: Color(0xFFCBD5E1), width: 1.2),
+              ),
+              enabledBorder: OutlineInputBorder(
+                borderRadius: BorderRadius.circular(14),
+                borderSide: const BorderSide(color: Color(0xFFCBD5E1), width: 1.2),
+              ),
+              focusedBorder: OutlineInputBorder(
+                borderRadius: BorderRadius.circular(14),
+                borderSide: const BorderSide(color: Color(0xFF2563EB), width: 2.0),
               ),
               suffixIcon: Row(
                 mainAxisSize: MainAxisSize.min,
@@ -286,15 +328,16 @@ class _SendScreenState extends State<SendScreen> {
                       }
                     },
                     child: Container(
-                      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
                       margin: const EdgeInsets.only(right: 8),
                       decoration: BoxDecoration(
                         color: const Color(0xFFEFF6FF),
-                        borderRadius: BorderRadius.circular(6),
+                        borderRadius: BorderRadius.circular(8),
+                        border: Border.all(color: const Color(0xFFBFDBFE)),
                       ),
-                      child: const Text(
-                        'MAX',
-                        style: TextStyle(fontSize: 12, fontWeight: FontWeight.w700, color: Color(0xFF2563EB)),
+                      child: Text(
+                        lang.tr('all'),
+                        style: const TextStyle(fontSize: 12, fontWeight: FontWeight.w700, color: Color(0xFF2563EB)),
                       ),
                     ),
                   ),
@@ -312,11 +355,11 @@ class _SendScreenState extends State<SendScreen> {
     );
   }
 
-  Widget _buildGasFeeCard(BuildContext context, String nativeSymbol) {
+  Widget _buildGasFeeCard(BuildContext context, String nativeSymbol, LanguageController lang) {
     final speeds = [
-      {'title': 'Slow', 'time': '≈ 1 min', 'gwei': '15 Gwei', 'fee': '0.0003 $nativeSymbol'},
-      {'title': 'Standard', 'time': '≈ 15 sec', 'gwei': '30 Gwei', 'fee': '0.0006 $nativeSymbol'},
-      {'title': 'Fast', 'time': '≈ 5 sec', 'gwei': '45 Gwei', 'fee': '0.0009 $nativeSymbol'},
+      {'title': lang.tr('slow_speed'), 'time': '≈ 1 min', 'gwei': '15 Gwei', 'fee': '0.0003 $nativeSymbol'},
+      {'title': lang.tr('standard_speed'), 'time': '≈ 15 sec', 'gwei': '30 Gwei', 'fee': '0.0006 $nativeSymbol'},
+      {'title': lang.tr('fast_speed'), 'time': '≈ 5 sec', 'gwei': '45 Gwei', 'fee': '0.0009 $nativeSymbol'},
     ];
 
     return CustomCard(
@@ -327,9 +370,9 @@ class _SendScreenState extends State<SendScreen> {
           Row(
             mainAxisAlignment: MainAxisAlignment.spaceBetween,
             children: [
-              const Text(
-                'Miner / Gas Fee',
-                style: TextStyle(fontSize: 13, fontWeight: FontWeight.w600, color: Color(0xFF475569)),
+              Text(
+                lang.tr('gas_fee_label'),
+                style: const TextStyle(fontSize: 13, fontWeight: FontWeight.w600, color: Color(0xFF475569)),
               ),
               Text(
                 speeds[_gasSpeed]['fee']!,
@@ -386,7 +429,7 @@ class _SendScreenState extends State<SendScreen> {
     );
   }
 
-  void _showTokenPickerSheet(BuildContext context, List<Token> tokens) {
+  void _showTokenPickerSheet(BuildContext context, List<Token> tokens, LanguageController lang) {
     showModalBottomSheet(
       context: context,
       backgroundColor: Colors.white,
@@ -399,9 +442,9 @@ class _SendScreenState extends State<SendScreen> {
           child: Column(
             mainAxisSize: MainAxisSize.min,
             children: [
-              const Text(
-                'Select Asset',
-                style: TextStyle(fontSize: 16, fontWeight: FontWeight.w700),
+              Text(
+                lang.tr('select_token'),
+                style: const TextStyle(fontSize: 16, fontWeight: FontWeight.w700),
               ),
               const SizedBox(height: 12),
               ...tokens.map((token) {
@@ -424,7 +467,12 @@ class _SendScreenState extends State<SendScreen> {
     );
   }
 
-  void _handleConfirmSend(BuildContext context, Wallet activeWallet, String networkName) {
+  void _handleConfirmSend(
+    BuildContext context,
+    Wallet activeWallet,
+    String networkName,
+    LanguageController lang,
+  ) {
     final toAddress = _addressController.text.trim();
     final amount = double.tryParse(_amountController.text) ?? 0.0;
     final assetController = context.read<AssetController>();
@@ -436,14 +484,24 @@ class _SendScreenState extends State<SendScreen> {
 
     if (toAddress.isEmpty) {
       ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Please enter recipient address')),
+        SnackBar(content: Text(lang.tr('err_recipient_empty'))),
       );
       return;
     }
 
     if (amount <= 0) {
       ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Please enter a valid transfer amount')),
+        SnackBar(content: Text(lang.tr('err_amount_invalid'))),
+      );
+      return;
+    }
+
+    if (_selectedToken != null && amount > _selectedToken!.balance) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text(lang.tr('err_insufficient_balance')),
+          backgroundColor: const Color(0xFFEF4444),
+        ),
       );
       return;
     }
@@ -461,15 +519,18 @@ class _SendScreenState extends State<SendScreen> {
             mainAxisSize: MainAxisSize.min,
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              const Center(
-                child: Text('Confirm Transfer', style: TextStyle(fontSize: 17, fontWeight: FontWeight.w700)),
+              Center(
+                child: Text(
+                  lang.tr('confirm_transfer'),
+                  style: const TextStyle(fontSize: 17, fontWeight: FontWeight.w700),
+                ),
               ),
               const SizedBox(height: 20),
-              _buildSummaryRow('Network', networkName),
-              _buildSummaryRow('From', Formatters.formatAddress(activeWallet.address)),
-              _buildSummaryRow('To', Formatters.formatAddress(toAddress)),
-              _buildSummaryRow('Amount', '$amount ${_selectedToken?.symbol ?? ''}'),
-              _buildSummaryRow('Miner Fee', '0.0006 ${_selectedToken?.symbol ?? ''}'),
+              _buildSummaryRow(lang.tr('contact_network'), networkName),
+              _buildSummaryRow(lang.tr('from_label'), Formatters.formatAddress(activeWallet.address)),
+              _buildSummaryRow(lang.tr('to_label'), Formatters.formatAddress(toAddress)),
+              _buildSummaryRow(lang.tr('amount'), '$amount ${_selectedToken?.symbol ?? ''}'),
+              _buildSummaryRow(lang.tr('gas_fee_label'), '0.0006 ${network.symbol}'),
               const Divider(height: 24, color: Color(0xFFF1F5F9)),
               SizedBox(
                 width: double.infinity,
@@ -497,14 +558,17 @@ class _SendScreenState extends State<SendScreen> {
                       setState(() => _isSending = false);
                       Navigator.of(context).pop();
                       ScaffoldMessenger.of(context).showSnackBar(
-                        const SnackBar(
-                          content: Text('Transaction broadcasted successfully!'),
-                          backgroundColor: Color(0xFF10B981),
+                        SnackBar(
+                          content: Text(lang.tr('tx_broadcast_success')),
+                          backgroundColor: const Color(0xFF10B981),
                         ),
                       );
                     }
                   },
-                  child: const Text('Confirm', style: TextStyle(color: Colors.white, fontWeight: FontWeight.w600, fontSize: 16)),
+                  child: Text(
+                    lang.tr('confirm'),
+                    style: const TextStyle(color: Colors.white, fontWeight: FontWeight.w600, fontSize: 16),
+                  ),
                 ),
               ),
             ],

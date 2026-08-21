@@ -9,6 +9,8 @@ abstract class ILocalStorageService {
   Future<void> setActiveWalletId(String? walletId);
   Future<String?> getSelectedNetworkId();
   Future<void> setSelectedNetworkId(String networkId);
+  String? getString(String key);
+  Future<void> setString(String key, String value);
   Future<void> clearAll();
 }
 
@@ -68,6 +70,16 @@ class LocalStorageService implements ILocalStorageService {
   @override
   Future<void> setSelectedNetworkId(String networkId) async {
     await _prefs.setString(_selectedNetworkIdKey, networkId);
+  }
+
+  @override
+  String? getString(String key) {
+    return _prefs.getString(key);
+  }
+
+  @override
+  Future<void> setString(String key, String value) async {
+    await _prefs.setString(key, value);
   }
 
   @override

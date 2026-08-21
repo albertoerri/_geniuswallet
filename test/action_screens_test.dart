@@ -6,8 +6,13 @@ import 'package:geniuswallet/domain/models/network.dart';
 import 'package:geniuswallet/domain/models/token.dart';
 import 'package:geniuswallet/domain/models/wallet.dart';
 import 'package:geniuswallet/presentation/controllers/asset_controller.dart';
+import 'package:geniuswallet/presentation/controllers/language_controller.dart';
+import 'package:geniuswallet/presentation/controllers/market_controller.dart';
 import 'package:geniuswallet/presentation/controllers/network_controller.dart';
 import 'package:geniuswallet/presentation/controllers/wallet_controller.dart';
+import 'package:geniuswallet/presentation/screens/assets/wallet_dashboard_screen.dart';
+import 'package:geniuswallet/presentation/screens/scan/scan_qr_screen.dart';
+import 'package:geniuswallet/presentation/screens/search/search_hub_screen.dart';
 import 'package:geniuswallet/presentation/screens/swap/swap_screen.dart';
 import 'package:geniuswallet/presentation/screens/tools/more_tools_screen.dart';
 import 'package:geniuswallet/presentation/screens/transfer/receive_screen.dart';
@@ -84,6 +89,7 @@ void main() {
   late NetworkController networkController;
   late WalletController walletController;
   late AssetController assetController;
+  late LanguageController languageController;
   late Wallet sampleWallet;
 
   setUp(() async {
@@ -111,6 +117,7 @@ void main() {
 
     networkController = NetworkController(networkRepo);
     walletController = WalletController(repository: mockWalletRepo);
+    languageController = LanguageController(localStorage);
     await walletController.loadWallets();
 
     assetController = AssetController(repository: AssetRepository(assetService: AssetService()));
@@ -124,9 +131,11 @@ void main() {
   Widget createTestApp(Widget child) {
     return MultiProvider(
       providers: [
+        ChangeNotifierProvider<LanguageController>.value(value: languageController),
         ChangeNotifierProvider<NetworkController>.value(value: networkController),
         ChangeNotifierProvider<WalletController>.value(value: walletController),
         ChangeNotifierProvider<AssetController>.value(value: assetController),
+        ChangeNotifierProvider<MarketController>(create: (_) => MarketController()),
       ],
       child: MaterialApp(
         home: child,
@@ -141,22 +150,22 @@ void main() {
     // Verify wallet details
     expect(find.text('Wallet Details'), findsOneWidget);
     expect(find.text('POL-1'), findsOneWidget);
-    expect(find.text('Export Recovery Phrase'), findsOneWidget);
+    expect(find.text('Backup Recovery Phrase'), findsOneWidget);
     expect(find.text('Export Private Key'), findsOneWidget);
     expect(find.text('Export Keystore'), findsOneWidget);
     expect(find.text('Delete Wallet'), findsOneWidget);
 
     // Test Export Recovery Phrase modal
-    await tester.tap(find.text('Export Recovery Phrase'));
+    await tester.tap(find.text('Backup Recovery Phrase'));
     await tester.pumpAndSettle();
-    expect(find.text('Enter your Master Password to verify identity:'), findsOneWidget);
+    expect(find.text('Enter master password'), findsOneWidget);
 
     // Enter password and confirm
     await tester.enterText(find.byType(TextField), 'Password123');
     await tester.tap(find.text('Confirm'));
     await tester.pumpAndSettle();
 
-    // Verify 12 words shown
+    // Verify words shown
     expect(find.text('Recovery Phrase'), findsOneWidget);
     expect(find.text('Copy Recovery Phrase'), findsOneWidget);
     expect(find.text('abandon'), findsWidgets);
@@ -168,7 +177,7 @@ void main() {
     // Test Delete Wallet confirmation
     await tester.tap(find.text('Delete Wallet'));
     await tester.pumpAndSettle();
-    expect(find.text('Are you sure you want to delete "POL-1"?\n\nPlease make sure you have backed up your Recovery Phrase or Private Key. This action cannot be undone.'), findsOneWidget);
+    expect(find.text('Are you sure you want to delete this wallet? Make sure you have backed up the private key or recovery phrase.'), findsOneWidget);
 
     // Cancel deletion
     await tester.tap(find.text('Cancel'));
@@ -204,28 +213,114 @@ void main() {
     await tester.pumpWidget(createTestApp(const SwapScreen()));
     await tester.pumpAndSettle();
 
-    expect(find.text('Swap&Bridge'), findsOneWidget);
-    expect(find.text('Limit Order'), findsOneWidget);
-    expect(find.text('Transit'), findsOneWidget);
+    expect(find.text('Transit Swap'), findsOneWidget);
     expect(find.text('From'), findsOneWidget);
     expect(find.text('To (estimated)'), findsOneWidget);
-    expect(find.text('Swap Rate'), findsOneWidget);
-    expect(find.text('Slippage'), findsOneWidget);
+    expect(find.text('Rate'), findsOneWidget);
     expect(find.text('Enter an Amount'), findsOneWidget);
   });
 
-  testWidgets('MoreToolsScreen renders all utility categories', (tester) async {
+  testWidgets('MoreToolsScreen renders all TokenPocket utility categories', (tester) async {
     await tester.pumpWidget(createTestApp(const MoreToolsScreen()));
     await tester.pumpAndSettle();
 
     expect(find.text('More Tools'), findsOneWidget);
-    expect(find.text('Asset Management'), findsOneWidget);
     expect(find.text('Batch Transfer'), findsOneWidget);
-    expect(find.text('Approval Checker & Revoke'), findsOneWidget);
-    expect(find.text('Network & Nodes'), findsOneWidget);
-    expect(find.text('Fast RPC Node Switcher'), findsOneWidget);
-    expect(find.text('Gas Tracker (EIP-1559)'), findsOneWidget);
-    expect(find.text('Security & Hardware'), findsOneWidget);
-    expect(find.text('KeyPal Hardware Wallet'), findsOneWidget);
+    expect(find.text('Approval & Revoke'), findsOneWidget);
+    expect(find.text('Token Security Check'), findsOneWidget);
+    expect(find.text('Node Speed & Switcher'), findsOneWidget);
+    expect(find.text('Gas Price Radar'), findsOneWidget);
+    expect(find.text('Message Sign & Verify'), findsOneWidget);
+    expect(find.text('Security Health Check'), findsOneWidget);
+  });
+
+  testWidgets('SearchHubScreen renders search bar, trending tags, and filters DApps & tokens', (tester) async {
+    await tester.pumpWidget(createTestApp(const SearchHubScreen()));
+    await tester.pumpAndSettle();
+
+    expect(find.text('Cancel'), findsOneWidget);
+    expect(find.text('Trending'), findsOneWidget);
+    expect(find.text('Uniswap V3'), findsAtLeastNWidgets(1));
+
+    // Type "Pancake" into search box
+    await tester.enterText(find.byType(TextField), 'Pancake');
+    await tester.pumpAndSettle();
+
+    expect(find.text('PancakeSwap'), findsAtLeastNWidgets(1));
+  });
+
+  testWidgets('ScanQrScreen renders viewfinder, flashlight, and simulation sheet', (tester) async {
+    await tester.pumpWidget(createTestApp(const ScanQrScreen()));
+    await tester.pump(const Duration(milliseconds: 100));
+
+    expect(find.text('Scan QR Code'), findsOneWidget);
+    expect(find.text('Place QR code within frame to scan'), findsOneWidget);
+    expect(find.text('My QR Code'), findsOneWidget);
+    expect(find.text('Simulate Scan'), findsOneWidget);
+
+    // Tap Simulate Scan button
+    await tester.tap(find.text('Simulate Scan'));
+    await tester.pump(const Duration(milliseconds: 200));
+
+    expect(find.text('EVM Recipient Address'), findsOneWidget);
+    expect(find.text('WalletConnect v2 URI'), findsOneWidget);
+  });
+
+  testWidgets('WalletDashboardScreen renders token list and opens Token Details Sheet upon tap', (tester) async {
+    tester.view.physicalSize = const Size(1080, 2400);
+    tester.view.devicePixelRatio = 2.0;
+    addTearDown(tester.view.resetPhysicalSize);
+    addTearDown(tester.view.resetDevicePixelRatio);
+
+    await tester.pumpWidget(createTestApp(const WalletDashboardScreen()));
+    await tester.pumpAndSettle();
+
+    expect(find.text('POL'), findsAtLeastNWidgets(1));
+
+    // Tap on token row
+    await tester.tap(find.text('POL').first);
+    await tester.pumpAndSettle();
+
+    // Verify Token Details Sheet opened with actions
+    expect(find.text('POL • Polygon'), findsOneWidget);
+    expect(find.text('Send'), findsAtLeastNWidgets(1));
+    expect(find.text('Receive'), findsAtLeastNWidgets(1));
+    expect(find.text('Swap'), findsAtLeastNWidgets(1));
+  });
+
+  testWidgets('WalletDashboardScreen opens Add / Manage Tokens modal sheet upon tapping (+) icon', (tester) async {
+    tester.view.physicalSize = const Size(1080, 2400);
+    tester.view.devicePixelRatio = 2.0;
+    addTearDown(tester.view.resetPhysicalSize);
+    addTearDown(tester.view.resetDevicePixelRatio);
+
+    await tester.pumpWidget(createTestApp(const WalletDashboardScreen()));
+    await tester.pumpAndSettle();
+
+    // Tap the (+) add token button
+    await tester.tap(find.byKey(const Key('dashboard_add_token_button')));
+    await tester.pumpAndSettle();
+
+    expect(find.text('Add / Manage Tokens'), findsOneWidget);
+    expect(find.text('Popular Tokens'), findsOneWidget);
+    expect(find.text('Custom Token'), findsOneWidget);
+  });
+
+  testWidgets('WalletDashboardScreen opens Asset Filter dropdown upon tapping Assets tab', (tester) async {
+    tester.view.physicalSize = const Size(1080, 2400);
+    tester.view.devicePixelRatio = 2.0;
+    addTearDown(tester.view.resetPhysicalSize);
+    addTearDown(tester.view.resetDevicePixelRatio);
+
+    await tester.pumpWidget(createTestApp(const WalletDashboardScreen()));
+    await tester.pumpAndSettle();
+
+    // Tap Assets ▾
+    await tester.tap(find.text('Assets'));
+    await tester.pumpAndSettle();
+
+    expect(find.text('Filter Assets'), findsOneWidget);
+    expect(find.text('Hide Small Balances (< \$1)'), findsOneWidget);
+    expect(find.text('Sort by Balance'), findsOneWidget);
   });
 }

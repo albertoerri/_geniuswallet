@@ -92,6 +92,8 @@ class WalletController extends ChangeNotifier {
     required String secret,
     required WalletImportType importType,
     required String networkId,
+    String? derivationPath,
+    String? password,
   }) async {
     _isLoading = true;
     _errorMessage = null;
@@ -102,6 +104,8 @@ class WalletController extends ChangeNotifier {
       final derivedResult = _walletService.processImportInput(
         importType: importType,
         secretInput: secret,
+        derivationPath: derivationPath,
+        password: password,
       );
 
       // 2. Create wallet entity
@@ -119,6 +123,102 @@ class WalletController extends ChangeNotifier {
       );
 
       // 4. Refresh wallet list
+      _wallets = await _repository.getWallets();
+      _activeWallet = newWallet;
+      _isLoading = false;
+      notifyListeners();
+      return true;
+    } catch (e) {
+      _errorMessage = e.toString().replaceAll('FormatException: ', '');
+      _isLoading = false;
+      notifyListeners();
+      return false;
+    }
+  }
+
+  Future<bool> createIdentityWallet({
+    required String name,
+    required String mnemonic,
+    List<String> networkIds = const ['polygon', 'binancesmartchain', 'ethereum', 'base', 'arbitrum', 'optimism'],
+  }) async {
+    _isLoading = true;
+    _errorMessage = null;
+    notifyListeners();
+
+    try {
+      final derivedResult = _walletService.processImportInput(
+        importType: WalletImportType.recoveryPhrase,
+        secretInput: mnemonic,
+      );
+
+      Wallet? firstCreated;
+      for (final netId in networkIds) {
+        final walletName = '$name-${netId.toUpperCase().substring(0, netId.length > 3 ? 3 : netId.length)}';
+        final newWallet = _walletService.createWalletEntity(
+          name: walletName,
+          address: derivedResult.address,
+          networkId: netId,
+          importType: WalletImportType.recoveryPhrase,
+        );
+
+        await _repository.saveWallet(
+          wallet: newWallet,
+          secret: mnemonic.trim(),
+        );
+
+        firstCreated ??= newWallet;
+      }
+
+      _wallets = await _repository.getWallets();
+      if (firstCreated != null) {
+        _activeWallet = firstCreated;
+      }
+      _isLoading = false;
+      notifyListeners();
+      return true;
+    } catch (e) {
+      _errorMessage = e.toString().replaceAll('FormatException: ', '');
+      _isLoading = false;
+      notifyListeners();
+      return false;
+    }
+  }
+
+  Future<bool> createMultiSigWallet({
+    required String name,
+    required String networkId,
+    required int threshold,
+    required List<String> owners,
+    String? contractAddress,
+  }) async {
+    _isLoading = true;
+    _errorMessage = null;
+    notifyListeners();
+
+    try {
+      // If contract address not provided, generate a deterministic multi-sig safe address
+      final hashHex = (name + networkId + threshold.toString() + owners.join()).hashCode.abs().toRadixString(16);
+      final safeAddress = contractAddress?.trim().isNotEmpty == true
+          ? contractAddress!.trim()
+          : '0x${hashHex.padLeft(40, 'a').substring(0, 40)}';
+
+      final derivedResult = _walletService.processImportInput(
+        importType: WalletImportType.watchWallet,
+        secretInput: safeAddress,
+      );
+
+      final newWallet = _walletService.createWalletEntity(
+        name: name.trim().isEmpty ? 'MultiSig-$threshold/${owners.length}' : name.trim(),
+        address: derivedResult.address,
+        networkId: networkId,
+        importType: WalletImportType.watchWallet,
+      );
+
+      await _repository.saveWallet(
+        wallet: newWallet,
+        secret: safeAddress,
+      );
+
       _wallets = await _repository.getWallets();
       _activeWallet = newWallet;
       _isLoading = false;

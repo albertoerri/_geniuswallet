@@ -1,5 +1,7 @@
 import 'package:flutter/material.dart';
+import 'package:provider/provider.dart';
 import '../../../core/constants/app_colors.dart';
+import '../../controllers/language_controller.dart';
 import '../../widgets/custom_card.dart';
 import '../auth/set_master_password_screen.dart';
 
@@ -8,6 +10,8 @@ class WelcomeScreen extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final lang = context.watch<LanguageController>();
+
     return Scaffold(
       backgroundColor: AppColors.background,
       body: SafeArea(
@@ -144,12 +148,12 @@ class WelcomeScreen extends StatelessWidget {
                       const SizedBox(height: 24),
 
                       // Typography Headlines
-                      const Padding(
-                        padding: EdgeInsets.symmetric(horizontal: 24),
+                      Padding(
+                        padding: const EdgeInsets.symmetric(horizontal: 24),
                         child: Text(
-                          'Your Multi-chain Wallet, Safe & Easy',
+                          lang.tr('welcome_headline'),
                           textAlign: TextAlign.center,
-                          style: TextStyle(
+                          style: const TextStyle(
                             fontSize: 22,
                             fontWeight: FontWeight.w700,
                             color: AppColors.textPrimary,
@@ -158,12 +162,12 @@ class WelcomeScreen extends StatelessWidget {
                         ),
                       ),
                       const SizedBox(height: 8),
-                      const Padding(
-                        padding: EdgeInsets.symmetric(horizontal: 32),
+                      Padding(
+                        padding: const EdgeInsets.symmetric(horizontal: 32),
                         child: Text(
-                          'Supporting mainstream chains, EVM-compatible chains, and Layer2.',
+                          lang.tr('welcome_subheadline'),
                           textAlign: TextAlign.center,
-                          style: TextStyle(
+                          style: const TextStyle(
                             fontSize: 14,
                             fontWeight: FontWeight.w400,
                             color: AppColors.textSecondary,
@@ -228,22 +232,22 @@ class WelcomeScreen extends StatelessWidget {
                                     ),
                                   ),
                                   const SizedBox(width: 14),
-                                  const Expanded(
+                                  Expanded(
                                     child: Column(
                                       crossAxisAlignment: CrossAxisAlignment.start,
                                       children: [
                                         Text(
-                                          'I have an account',
-                                          style: TextStyle(
+                                          lang.tr('i_have_account'),
+                                          style: const TextStyle(
                                             fontSize: 15,
                                             fontWeight: FontWeight.w600,
                                             color: AppColors.textPrimary,
                                           ),
                                         ),
-                                        SizedBox(height: 2),
+                                        const SizedBox(height: 2),
                                         Text(
-                                          'Import Wallet, KeyPal, MultiSig Wallet',
-                                          style: TextStyle(
+                                          lang.tr('import_wallet_sub'),
+                                          style: const TextStyle(
                                             fontSize: 12,
                                             color: AppColors.textSecondary,
                                           ),
@@ -288,22 +292,22 @@ class WelcomeScreen extends StatelessWidget {
                                     ),
                                   ),
                                   const SizedBox(width: 14),
-                                  const Expanded(
+                                  Expanded(
                                     child: Column(
                                       crossAxisAlignment: CrossAxisAlignment.start,
                                       children: [
                                         Text(
-                                          'No accounts',
-                                          style: TextStyle(
+                                          lang.tr('no_accounts'),
+                                          style: const TextStyle(
                                             fontSize: 15,
                                             fontWeight: FontWeight.w600,
                                             color: AppColors.textPrimary,
                                           ),
                                         ),
-                                        SizedBox(height: 2),
+                                        const SizedBox(height: 2),
                                         Text(
-                                          'Create Now',
-                                          style: TextStyle(
+                                          lang.tr('create_now'),
+                                          style: const TextStyle(
                                             fontSize: 12,
                                             color: AppColors.textSecondary,
                                           ),

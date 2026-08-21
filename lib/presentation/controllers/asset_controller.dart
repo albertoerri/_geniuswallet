@@ -11,6 +11,8 @@ class AssetController extends ChangeNotifier {
   double _totalBalanceUsd = 0.0;
   bool _isLoading = false;
   int _selectedSubTab = 0; // 0: Assets, 1: DeFi, 2: NFT
+  bool _hideSmallBalances = false;
+  bool _sortByBalance = false;
   final Map<String, double> _walletBalances = {};
 
   AssetController({required IAssetRepository repository})
@@ -20,6 +22,37 @@ class AssetController extends ChangeNotifier {
   double get totalBalanceUsd => _totalBalanceUsd;
   bool get isLoading => _isLoading;
   int get selectedSubTab => _selectedSubTab;
+  bool get hideSmallBalances => _hideSmallBalances;
+  bool get sortByBalance => _sortByBalance;
+
+  List<Token> get displayedTokens {
+    var list = List<Token>.from(_tokens);
+    if (_hideSmallBalances) {
+      list = list.where((t) => t.fiatValue >= 1.0 || t.balance > 0.01).toList();
+    }
+    if (_sortByBalance) {
+      list.sort((a, b) => b.fiatValue.compareTo(a.fiatValue));
+    }
+    return list;
+  }
+
+  void toggleHideSmallBalances() {
+    _hideSmallBalances = !_hideSmallBalances;
+    notifyListeners();
+  }
+
+  void toggleSortByBalance() {
+    _sortByBalance = !_sortByBalance;
+    notifyListeners();
+  }
+
+  void addCustomToken(Token token) {
+    if (!_tokens.any((t) => t.symbol.toUpperCase() == token.symbol.toUpperCase())) {
+      _tokens.add(token);
+      _totalBalanceUsd += token.fiatValue;
+      notifyListeners();
+    }
+  }
 
   double getWalletBalance(String walletId) => _walletBalances[walletId] ?? 0.0;
 

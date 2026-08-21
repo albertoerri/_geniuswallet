@@ -1,6 +1,10 @@
 enum WalletImportType {
   recoveryPhrase,
   privateKey,
+  keystore,
+  syncWallet,
+  coldWallet,
+  watchWallet,
   generated,
 }
 

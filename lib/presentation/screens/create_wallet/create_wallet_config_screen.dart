@@ -1,6 +1,8 @@
 import 'package:flutter/material.dart';
+import 'package:provider/provider.dart';
 import '../../../core/constants/app_colors.dart';
 import '../../../domain/models/network.dart';
+import '../../controllers/language_controller.dart';
 import 'backup_tips_screen.dart';
 
 class CreateWalletConfigScreen extends StatefulWidget {
@@ -38,17 +40,18 @@ class _CreateWalletConfigScreenState extends State<CreateWalletConfigScreen> {
   }
 
   void _onNext() {
+    final lang = context.read<LanguageController>();
     final name = _nameController.text.trim();
     if (name.isEmpty) {
       setState(() {
-        _errorMessage = 'Please input wallet name';
+        _errorMessage = lang.tr('enter_wallet_name_hint');
       });
       return;
     }
 
     if (!_agreedToTerms) {
       setState(() {
-        _errorMessage = 'Please agree to the Service Agreement';
+        _errorMessage = lang.tr('must_agree_terms');
       });
       return;
     }
@@ -66,9 +69,10 @@ class _CreateWalletConfigScreenState extends State<CreateWalletConfigScreen> {
 
   @override
   Widget build(BuildContext context) {
+    final lang = context.watch<LanguageController>();
     final title = widget.isHD
-        ? 'Create HD Wallet'
-        : 'Create ${widget.network?.name ?? "Wallet"}';
+        ? lang.tr('create_hd_wallet')
+        : lang.tr('create_network_wallet', params: {'network': widget.network?.name ?? 'Wallet'});
 
     return Scaffold(
       backgroundColor: const Color(0xFFF7F8FA),
@@ -106,9 +110,9 @@ class _CreateWalletConfigScreenState extends State<CreateWalletConfigScreen> {
                       const SizedBox(height: 10),
 
                       // Subtitle
-                      const Text(
-                        'Please set a name for the wallet',
-                        style: TextStyle(
+                      Text(
+                        lang.tr('set_wallet_name_sub'),
+                        style: const TextStyle(
                           fontSize: 13,
                           color: Color(0xFF64748B),
                         ),
@@ -116,9 +120,9 @@ class _CreateWalletConfigScreenState extends State<CreateWalletConfigScreen> {
                       const SizedBox(height: 28),
 
                       // Wallet Name Label
-                      const Text(
-                        'Wallet Name',
-                        style: TextStyle(
+                      Text(
+                        lang.tr('wallet_name'),
+                        style: const TextStyle(
                           fontSize: 14,
                           fontWeight: FontWeight.w600,
                           color: Color(0xFF1E293B),
@@ -126,7 +130,7 @@ class _CreateWalletConfigScreenState extends State<CreateWalletConfigScreen> {
                       ),
                       const SizedBox(height: 8),
 
-                      // Wallet Name Input (clean, direct styled, no double borders)
+                      // Wallet Name Input
                       TextField(
                         controller: _nameController,
                         style: const TextStyle(
@@ -138,26 +142,27 @@ class _CreateWalletConfigScreenState extends State<CreateWalletConfigScreen> {
                           if (_errorMessage != null) _errorMessage = null;
                         }),
                         decoration: InputDecoration(
-                          hintText: 'Please input wallet name',
+                          hintText: lang.tr('enter_wallet_name_hint'),
                           hintStyle: const TextStyle(
-                            fontSize: 15,
+                            fontSize: 14,
                             fontWeight: FontWeight.w400,
                             color: Color(0xFF94A3B8),
                           ),
                           filled: true,
                           fillColor: Colors.white,
-                          contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 15),
+                          contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 16),
+                          prefixIcon: const Icon(Icons.account_balance_wallet_outlined, size: 20, color: Color(0xFF64748B)),
                           border: OutlineInputBorder(
-                            borderRadius: BorderRadius.circular(12),
-                            borderSide: const BorderSide(color: Color(0xFFE2E8F0)),
+                            borderRadius: BorderRadius.circular(14),
+                            borderSide: const BorderSide(color: Color(0xFFCBD5E1), width: 1.2),
                           ),
                           enabledBorder: OutlineInputBorder(
-                            borderRadius: BorderRadius.circular(12),
-                            borderSide: const BorderSide(color: Color(0xFFE2E8F0)),
+                            borderRadius: BorderRadius.circular(14),
+                            borderSide: const BorderSide(color: Color(0xFFCBD5E1), width: 1.2),
                           ),
                           focusedBorder: OutlineInputBorder(
-                            borderRadius: BorderRadius.circular(12),
-                            borderSide: const BorderSide(color: Color(0xFF2563EB), width: 1.5),
+                            borderRadius: BorderRadius.circular(14),
+                            borderSide: const BorderSide(color: Color(0xFF2563EB), width: 2.0),
                           ),
                           suffixIcon: _nameController.text.isNotEmpty
                               ? IconButton(
@@ -173,7 +178,7 @@ class _CreateWalletConfigScreenState extends State<CreateWalletConfigScreen> {
                       ),
 
                       if (_errorMessage != null) ...[
-                        const SizedBox(height: 8),
+                        const SizedBox(height: 10),
                         Text(
                           _errorMessage!,
                           style: const TextStyle(
@@ -186,7 +191,7 @@ class _CreateWalletConfigScreenState extends State<CreateWalletConfigScreen> {
 
                       const Spacer(),
 
-                      // Agreement Row
+                      // Agreement Row (Terms of Service)
                       GestureDetector(
                         onTap: () {
                           setState(() {
@@ -213,9 +218,9 @@ class _CreateWalletConfigScreenState extends State<CreateWalletConfigScreen> {
                                   : null,
                             ),
                             const SizedBox(width: 8),
-                            const Text(
-                              'Read & agree with ',
-                              style: TextStyle(
+                            Text(
+                              '${lang.tr('read_agree')} ',
+                              style: const TextStyle(
                                 fontSize: 13,
                                 color: Color(0xFF64748B),
                               ),
@@ -223,12 +228,12 @@ class _CreateWalletConfigScreenState extends State<CreateWalletConfigScreen> {
                             GestureDetector(
                               onTap: () {
                                 ScaffoldMessenger.of(context).showSnackBar(
-                                  const SnackBar(content: Text('Service Agreement')),
+                                  SnackBar(content: Text(lang.tr('terms_of_service'))),
                                 );
                               },
-                              child: const Text(
-                                'Service Agreement',
-                                style: TextStyle(
+                              child: Text(
+                                lang.tr('terms_of_service'),
+                                style: const TextStyle(
                                   fontSize: 13,
                                   color: Color(0xFF2563EB),
                                   fontWeight: FontWeight.w500,
@@ -255,7 +260,7 @@ class _CreateWalletConfigScreenState extends State<CreateWalletConfigScreen> {
                             ),
                           ),
                           child: Text(
-                            widget.isHD ? 'Create Wallet' : 'Next Step',
+                            widget.isHD ? lang.tr('create_wallet') : lang.tr('btn_next_step'),
                             style: const TextStyle(
                               fontSize: 16,
                               fontWeight: FontWeight.w600,

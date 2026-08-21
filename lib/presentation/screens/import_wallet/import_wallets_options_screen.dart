@@ -1,7 +1,12 @@
 import 'package:flutter/material.dart';
+import 'package:provider/provider.dart';
 import '../../../domain/models/network.dart';
 import '../../../domain/models/wallet.dart';
+import '../../controllers/language_controller.dart';
+import 'cold_wallet_screen.dart';
 import 'import_wallet_screen.dart';
+import 'sync_wallet_screen.dart';
+import 'watch_wallet_screen.dart';
 
 class ImportWalletsOptionsScreen extends StatelessWidget {
   final Network network;
@@ -24,15 +29,17 @@ class ImportWalletsOptionsScreen extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final lang = context.watch<LanguageController>();
+
     return Scaffold(
       backgroundColor: const Color(0xFFF7F8FA),
       appBar: AppBar(
         backgroundColor: Colors.white,
         elevation: 0,
         centerTitle: true,
-        title: const Text(
-          'Import Wallets',
-          style: TextStyle(
+        title: Text(
+          lang.tr('import_wallets_title'),
+          style: const TextStyle(
             fontSize: 17,
             fontWeight: FontWeight.w600,
             color: Color(0xFF1E293B),
@@ -59,35 +66,37 @@ class ImportWalletsOptionsScreen extends StatelessWidget {
                   _buildOptionItem(
                     icon: Icons.edit_note_rounded,
                     iconBgColor: const Color(0xFF1E6FFF),
-                    title: 'Recovery Phrase',
-                    subtitle: 'Restore wallet through Recovery Phrase',
+                    title: lang.tr('recovery_phrase'),
+                    subtitle: lang.tr('recovery_phrase_sub'),
                     onTap: () => _navigateToImport(context, WalletImportType.recoveryPhrase),
                   ),
                   const Divider(height: 1, indent: 70, color: Color(0xFFF1F5F9)),
                   _buildOptionItem(
                     icon: Icons.key_rounded,
                     iconBgColor: const Color(0xFF1E6FFF),
-                    title: 'Private Key',
-                    subtitle: 'Restore wallet through Private Key',
+                    title: lang.tr('private_key'),
+                    subtitle: lang.tr('private_key_sub'),
                     onTap: () => _navigateToImport(context, WalletImportType.privateKey),
                   ),
                   const Divider(height: 1, indent: 70, color: Color(0xFFF1F5F9)),
                   _buildOptionItem(
                     icon: Icons.lock_outline_rounded,
                     iconBgColor: const Color(0xFF1E6FFF),
-                    title: 'Keystore',
-                    subtitle: 'Restore wallet through Keystore file',
-                    onTap: () => _navigateToImport(context, WalletImportType.recoveryPhrase),
+                    title: lang.tr('keystore'),
+                    subtitle: lang.tr('keystore_sub'),
+                    onTap: () => _navigateToImport(context, WalletImportType.keystore),
                   ),
                   const Divider(height: 1, indent: 70, color: Color(0xFFF1F5F9)),
                   _buildOptionItem(
                     icon: Icons.sync_rounded,
                     iconBgColor: const Color(0xFF1E6FFF),
-                    title: 'Sync Wallet',
-                    subtitle: "Sync other EVM network's wallet",
+                    title: lang.tr('sync_wallet'),
+                    subtitle: lang.tr('sync_wallet_sub'),
                     onTap: () {
-                      ScaffoldMessenger.of(context).showSnackBar(
-                        const SnackBar(content: Text('Sync Wallet feature coming soon!')),
+                      Navigator.of(context).push(
+                        MaterialPageRoute(
+                          builder: (_) => SyncWalletScreen(network: network),
+                        ),
                       );
                     },
                   ),
@@ -109,11 +118,13 @@ class ImportWalletsOptionsScreen extends StatelessWidget {
                   _buildOptionItem(
                     icon: Icons.account_balance_wallet_outlined,
                     iconBgColor: const Color(0xFF10B981),
-                    title: 'Cold Wallet',
-                    subtitle: 'Import wallet offline and isolate from network',
+                    title: lang.tr('cold_wallet'),
+                    subtitle: lang.tr('cold_wallet_sub'),
                     onTap: () {
-                      ScaffoldMessenger.of(context).showSnackBar(
-                        const SnackBar(content: Text('Cold Wallet support coming soon!')),
+                      Navigator.of(context).push(
+                        MaterialPageRoute(
+                          builder: (_) => ColdWalletScreen(network: network),
+                        ),
                       );
                     },
                   ),
@@ -121,11 +132,13 @@ class ImportWalletsOptionsScreen extends StatelessWidget {
                   _buildOptionItem(
                     icon: Icons.remove_red_eye_outlined,
                     iconBgColor: const Color(0xFF10B981),
-                    title: 'Watch Wallet',
-                    subtitle: 'Supports wallet addresses and EIP-4527, compatible with cold wallets.',
+                    title: lang.tr('watch_wallet'),
+                    subtitle: lang.tr('watch_wallet_sub'),
                     onTap: () {
-                      ScaffoldMessenger.of(context).showSnackBar(
-                        const SnackBar(content: Text('Watch Wallet support coming soon!')),
+                      Navigator.of(context).push(
+                        MaterialPageRoute(
+                          builder: (_) => WatchWalletScreen(network: network),
+                        ),
                       );
                     },
                   ),

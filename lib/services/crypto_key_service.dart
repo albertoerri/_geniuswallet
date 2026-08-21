@@ -20,8 +20,11 @@ class DerivedKeyResult {
 abstract class ICryptoKeyService {
   bool validateMnemonic(String mnemonic);
   bool validatePrivateKey(String privateKey);
+  bool validateAddress(String address);
   DerivedKeyResult deriveFromMnemonic(String mnemonic, {String derivationPath = "m/44'/60'/0'/0/0"});
   DerivedKeyResult deriveFromPrivateKey(String privateKey);
+  DerivedKeyResult deriveFromKeystore(String keystoreJson, String password);
+  DerivedKeyResult deriveFromAddress(String address);
   String generateMnemonic();
 }
 
@@ -46,6 +49,15 @@ class CryptoKeyService implements ICryptoKeyService {
     } catch (_) {
       return false;
     }
+  }
+
+  @override
+  bool validateAddress(String address) {
+    final trimmed = address.trim();
+    if (!RegExp(r'^0x[0-9a-fA-F]{40}$').hasMatch(trimmed)) {
+      return false;
+    }
+    return true;
   }
 
   @override
@@ -90,6 +102,36 @@ class CryptoKeyService implements ICryptoKeyService {
     return DerivedKeyResult(
       address: address,
       privateKeyHex: cleaned,
+    );
+  }
+
+  @override
+  DerivedKeyResult deriveFromKeystore(String keystoreJson, String password) {
+    try {
+      final wallet = Wallet.fromJson(keystoreJson.trim(), password);
+      final privateKeyHex = HEX.encode(wallet.privateKey.privateKey);
+      final ethKey = EthPrivateKey.fromHex(privateKeyHex);
+      final address = ethKey.address.hexEip55;
+
+      return DerivedKeyResult(
+        address: address,
+        privateKeyHex: privateKeyHex,
+      );
+    } catch (e) {
+      throw FormatException('Failed to decrypt Keystore. Please verify JSON and password: ${e.toString()}');
+    }
+  }
+
+  @override
+  DerivedKeyResult deriveFromAddress(String address) {
+    final trimmed = address.trim();
+    if (!validateAddress(trimmed)) {
+      throw const FormatException('Invalid EVM wallet address format (must start with 0x and be 42 characters long)');
+    }
+    final ethAddress = EthereumAddress.fromHex(trimmed.toLowerCase());
+    return DerivedKeyResult(
+      address: ethAddress.hexEip55,
+      privateKeyHex: '',
     );
   }
 

@@ -7,6 +7,7 @@ abstract class IWalletService {
     required WalletImportType importType,
     required String secretInput,
     String? derivationPath,
+    String? password,
   });
 
   Wallet createWalletEntity({
@@ -32,6 +33,7 @@ class WalletService implements IWalletService {
     required WalletImportType importType,
     required String secretInput,
     String? derivationPath,
+    String? password,
   }) {
     if (importType == WalletImportType.recoveryPhrase) {
       return _cryptoService.deriveFromMnemonic(
@@ -40,6 +42,21 @@ class WalletService implements IWalletService {
       );
     } else if (importType == WalletImportType.privateKey) {
       return _cryptoService.deriveFromPrivateKey(secretInput);
+    } else if (importType == WalletImportType.keystore) {
+      return _cryptoService.deriveFromKeystore(secretInput, password ?? '');
+    } else if (importType == WalletImportType.watchWallet) {
+      return _cryptoService.deriveFromAddress(secretInput);
+    } else if (importType == WalletImportType.coldWallet || importType == WalletImportType.syncWallet) {
+      if (secretInput.startsWith('0x') && secretInput.length == 42) {
+        return _cryptoService.deriveFromAddress(secretInput);
+      } else if (secretInput.length == 64 || (secretInput.startsWith('0x') && secretInput.length == 66)) {
+        return _cryptoService.deriveFromPrivateKey(secretInput);
+      } else {
+        return _cryptoService.deriveFromMnemonic(
+          secretInput,
+          derivationPath: derivationPath ?? "m/44'/60'/0'/0/0",
+        );
+      }
     } else {
       throw UnsupportedError('Unsupported import type: $importType');
     }

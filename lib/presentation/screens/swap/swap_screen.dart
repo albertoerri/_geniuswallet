@@ -3,10 +3,27 @@ import 'package:provider/provider.dart';
 import '../../../core/constants/app_colors.dart';
 import '../../../domain/models/token.dart';
 import '../../controllers/asset_controller.dart';
+import '../../controllers/language_controller.dart';
 import '../../controllers/network_controller.dart';
 import '../../controllers/wallet_controller.dart';
 import '../../widgets/crypto_icon.dart';
 import '../../widgets/custom_card.dart';
+
+class SwapRecord {
+  final String fromSymbol;
+  final String toSymbol;
+  final double fromAmount;
+  final double toAmount;
+  final DateTime timestamp;
+
+  const SwapRecord({
+    required this.fromSymbol,
+    required this.toSymbol,
+    required this.fromAmount,
+    required this.toAmount,
+    required this.timestamp,
+  });
+}
 
 class SwapScreen extends StatefulWidget {
   final bool isStandalonePage;
@@ -24,6 +41,7 @@ class _SwapScreenState extends State<SwapScreen> {
   Token? _toToken;
   double _slippage = 2.0;
   bool _isSwapping = false;
+  final List<SwapRecord> _swapHistory = [];
 
   @override
   void dispose() {
@@ -33,6 +51,7 @@ class _SwapScreenState extends State<SwapScreen> {
 
   @override
   Widget build(BuildContext context) {
+    final lang = context.watch<LanguageController>();
     final walletController = context.watch<WalletController>();
     final networkController = context.watch<NetworkController>();
     final assetController = context.watch<AssetController>();
@@ -40,8 +59,8 @@ class _SwapScreenState extends State<SwapScreen> {
 
     if (activeWallet == null) {
       return Scaffold(
-        appBar: AppBar(title: const Text('Swap')),
-        body: const Center(child: Text('No active wallet')),
+        appBar: AppBar(title: Text(lang.tr('action_swap'))),
+        body: Center(child: Text(lang.tr('no_active_wallet'))),
       );
     }
 
@@ -64,7 +83,7 @@ class _SwapScreenState extends State<SwapScreen> {
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           // Top Segmented Tabs (Swap&Bridge / Limit Order)
-          _buildTopTabs(),
+          _buildTopTabs(lang),
 
           const SizedBox(height: 16),
 
@@ -79,7 +98,7 @@ class _SwapScreenState extends State<SwapScreen> {
                   mainAxisAlignment: MainAxisAlignment.spaceBetween,
                   children: [
                     const Text(
-                      'Transit',
+                      'Transit Swap',
                       style: TextStyle(
                         fontSize: 18,
                         fontWeight: FontWeight.w800,
@@ -95,7 +114,7 @@ class _SwapScreenState extends State<SwapScreen> {
                           constraints: const BoxConstraints(),
                           onPressed: () {
                             ScaffoldMessenger.of(context).showSnackBar(
-                              const SnackBar(content: Text('Rates updated')),
+                              SnackBar(content: Text(lang.tr('rates_updated'))),
                             );
                           },
                         ),
@@ -104,7 +123,7 @@ class _SwapScreenState extends State<SwapScreen> {
                           icon: const Icon(Icons.settings_outlined, size: 20, color: Color(0xFF64748B)),
                           padding: EdgeInsets.zero,
                           constraints: const BoxConstraints(),
-                          onPressed: () => _showSlippageSheet(context),
+                          onPressed: () => _showSlippageSheet(context, lang),
                         ),
                       ],
                     ),
@@ -114,7 +133,7 @@ class _SwapScreenState extends State<SwapScreen> {
                 const SizedBox(height: 14),
 
                 // From Box
-                _buildFromCard(context, tokens),
+                _buildFromCard(context, tokens, lang),
 
                 const SizedBox(height: 8),
 
@@ -143,7 +162,7 @@ class _SwapScreenState extends State<SwapScreen> {
                 const SizedBox(height: 8),
 
                 // To Box
-                _buildToCard(context, tokens, estimatedToAmount),
+                _buildToCard(context, tokens, estimatedToAmount, lang),
 
                 const SizedBox(height: 18),
 
@@ -159,7 +178,7 @@ class _SwapScreenState extends State<SwapScreen> {
                     ),
                     onPressed: fromAmount <= 0 || _isSwapping
                         ? null
-                        : () => _handleSwap(context, fromAmount, estimatedToAmount),
+                        : () => _handleSwap(context, fromAmount, estimatedToAmount, lang),
                     child: _isSwapping
                         ? const SizedBox(
                             width: 22,
@@ -167,7 +186,7 @@ class _SwapScreenState extends State<SwapScreen> {
                             child: CircularProgressIndicator(color: Colors.white, strokeWidth: 2.5),
                           )
                         : Text(
-                            fromAmount <= 0 ? 'Enter an Amount' : 'Swap Now',
+                            fromAmount <= 0 ? lang.tr('btn_enter_amount') : lang.tr('btn_swap_now'),
                             style: const TextStyle(color: Colors.white, fontSize: 16, fontWeight: FontWeight.w600),
                           ),
                   ),
@@ -176,7 +195,7 @@ class _SwapScreenState extends State<SwapScreen> {
                 const SizedBox(height: 16),
 
                 // Rate & Route Breakdown
-                _buildDetailsBox(rate, minReceived),
+                _buildDetailsBox(rate, minReceived, lang),
               ],
             ),
           ),
@@ -184,30 +203,80 @@ class _SwapScreenState extends State<SwapScreen> {
           const SizedBox(height: 24),
 
           // Last Record Section
-          const Text(
-            'Last Record',
-            style: TextStyle(fontSize: 15, fontWeight: FontWeight.w700, color: Color(0xFF1E293B)),
+          Text(
+            lang.tr('last_record'),
+            style: const TextStyle(fontSize: 15, fontWeight: FontWeight.w700, color: Color(0xFF1E293B)),
           ),
           const SizedBox(height: 12),
-          Container(
-            width: double.infinity,
-            padding: const EdgeInsets.symmetric(vertical: 36),
-            decoration: BoxDecoration(
-              color: Colors.white,
-              borderRadius: BorderRadius.circular(16),
-              border: Border.all(color: const Color(0xFFF1F5F9)),
-            ),
-            child: const Column(
-              children: [
-                Icon(Icons.receipt_long_outlined, size: 44, color: Color(0xFFCBD5E1)),
-                SizedBox(height: 8),
-                Text(
-                  'No transaction records',
-                  style: TextStyle(fontSize: 13, color: Color(0xFF94A3B8), fontWeight: FontWeight.w500),
+
+          _swapHistory.isEmpty
+              ? Container(
+                  width: double.infinity,
+                  padding: const EdgeInsets.symmetric(vertical: 36),
+                  decoration: BoxDecoration(
+                    color: Colors.white,
+                    borderRadius: BorderRadius.circular(16),
+                    border: Border.all(color: const Color(0xFFF1F5F9)),
+                  ),
+                  child: Column(
+                    children: [
+                      const Icon(Icons.receipt_long_outlined, size: 44, color: Color(0xFFCBD5E1)),
+                      const SizedBox(height: 8),
+                      Text(
+                        lang.tr('no_tx_records'),
+                        style: const TextStyle(fontSize: 13, color: Color(0xFF94A3B8), fontWeight: FontWeight.w500),
+                      ),
+                    ],
+                  ),
+                )
+              : ListView.separated(
+                  shrinkWrap: true,
+                  physics: const NeverScrollableScrollPhysics(),
+                  itemCount: _swapHistory.length,
+                  separatorBuilder: (_, __) => const SizedBox(height: 8),
+                  itemBuilder: (ctx, i) {
+                    final rec = _swapHistory[i];
+                    return CustomCard(
+                      padding: const EdgeInsets.all(14),
+                      child: Row(
+                        mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                        children: [
+                          Row(
+                            children: [
+                              Container(
+                                padding: const EdgeInsets.all(8),
+                                decoration: const BoxDecoration(
+                                  color: Color(0xFFECFDF5),
+                                  shape: BoxShape.circle,
+                                ),
+                                child: const Icon(Icons.check_circle_rounded, color: Color(0xFF10B981), size: 20),
+                              ),
+                              const SizedBox(width: 12),
+                              Column(
+                                crossAxisAlignment: CrossAxisAlignment.start,
+                                children: [
+                                  Text(
+                                    '${rec.fromSymbol} ➔ ${rec.toSymbol}',
+                                    style: const TextStyle(fontSize: 14, fontWeight: FontWeight.w700, color: Color(0xFF1E293B)),
+                                  ),
+                                  const SizedBox(height: 2),
+                                  Text(
+                                    '${rec.fromAmount} ${rec.fromSymbol}  ➔  ${rec.toAmount.toStringAsFixed(4)} ${rec.toSymbol}',
+                                    style: const TextStyle(fontSize: 12, color: Color(0xFF64748B)),
+                                  ),
+                                ],
+                              ),
+                            ],
+                          ),
+                          Text(
+                            lang.tr('success'),
+                            style: const TextStyle(fontSize: 12, color: Color(0xFF10B981), fontWeight: FontWeight.w600),
+                          ),
+                        ],
+                      ),
+                    );
+                  },
                 ),
-              ],
-            ),
-          ),
 
           const SizedBox(height: 32),
         ],
@@ -224,7 +293,7 @@ class _SwapScreenState extends State<SwapScreen> {
     return Scaffold(
       backgroundColor: const Color(0xFFF7F8FA),
       appBar: AppBar(
-        title: const Text('Swap & Bridge', style: TextStyle(fontWeight: FontWeight.w600, fontSize: 17)),
+        title: Text(lang.tr('swap_title'), style: const TextStyle(fontWeight: FontWeight.w600, fontSize: 17)),
         backgroundColor: Colors.white,
         elevation: 0,
         centerTitle: true,
@@ -237,7 +306,7 @@ class _SwapScreenState extends State<SwapScreen> {
     );
   }
 
-  Widget _buildTopTabs() {
+  Widget _buildTopTabs(LanguageController lang) {
     return Row(
       children: [
         GestureDetector(
@@ -248,7 +317,7 @@ class _SwapScreenState extends State<SwapScreen> {
               Row(
                 children: [
                   Text(
-                    'Swap&Bridge',
+                    lang.tr('swap_title'),
                     style: TextStyle(
                       fontSize: 17,
                       fontWeight: _activeTopTab == 0 ? FontWeight.w700 : FontWeight.w500,
@@ -271,29 +340,24 @@ class _SwapScreenState extends State<SwapScreen> {
             ],
           ),
         ),
-        const SizedBox(width: 24),
-        GestureDetector(
-          onTap: () => setState(() => _activeTopTab = 1),
-          child: Text(
-            'Limit Order',
-            style: TextStyle(
-              fontSize: 16,
-              fontWeight: _activeTopTab == 1 ? FontWeight.w700 : FontWeight.w500,
-              color: _activeTopTab == 1 ? const Color(0xFF1E293B) : const Color(0xFF94A3B8),
-            ),
-          ),
-        ),
       ],
     );
   }
 
-  Widget _buildFromCard(BuildContext context, List<Token> tokens) {
+  Widget _buildFromCard(BuildContext context, List<Token> tokens, LanguageController lang) {
     return Container(
-      padding: const EdgeInsets.all(14),
+      padding: const EdgeInsets.all(16),
       decoration: BoxDecoration(
-        color: const Color(0xFFF8FAFC),
-        borderRadius: BorderRadius.circular(14),
-        border: Border.all(color: const Color(0xFFE2E8F0)),
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(16),
+        border: Border.all(color: const Color(0xFFCBD5E1), width: 1.2),
+        boxShadow: [
+          BoxShadow(
+            color: Colors.black.withValues(alpha: 0.02),
+            blurRadius: 6,
+            offset: const Offset(0, 2),
+          ),
+        ],
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
@@ -301,39 +365,63 @@ class _SwapScreenState extends State<SwapScreen> {
           Row(
             mainAxisAlignment: MainAxisAlignment.spaceBetween,
             children: [
-              const Text('From', style: TextStyle(fontSize: 12, color: Color(0xFF64748B), fontWeight: FontWeight.w600)),
+              Text(
+                lang.tr('from_label'),
+                style: const TextStyle(fontSize: 13, color: Color(0xFF475569), fontWeight: FontWeight.w600),
+              ),
               GestureDetector(
                 onTap: () {
                   if (_fromToken != null) {
                     setState(() => _fromAmountController.text = _fromToken!.balance.toString());
                   }
                 },
-                child: const Text('All', style: TextStyle(fontSize: 12, color: Color(0xFF2563EB), fontWeight: FontWeight.w700)),
+                child: Row(
+                  children: [
+                    Text(
+                      '${lang.tr('balance_prefix')}${_fromToken?.formattedBalance ?? '0.00'}',
+                      style: const TextStyle(fontSize: 12, color: Color(0xFF64748B)),
+                    ),
+                    const SizedBox(width: 6),
+                    Container(
+                      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
+                      decoration: BoxDecoration(
+                        color: const Color(0xFFEFF6FF),
+                        borderRadius: BorderRadius.circular(6),
+                        border: Border.all(color: const Color(0xFFBFDBFE)),
+                      ),
+                      child: Text(
+                        lang.tr('all'),
+                        style: const TextStyle(fontSize: 11, fontWeight: FontWeight.w700, color: Color(0xFF2563EB)),
+                      ),
+                    ),
+                  ],
+                ),
               ),
             ],
           ),
-          const SizedBox(height: 10),
+          const SizedBox(height: 12),
           Row(
             children: [
               // Token selector chip
               GestureDetector(
-                onTap: () => _showTokenPicker(context, tokens, isFrom: true),
+                onTap: () => _showTokenPicker(context, tokens, isFrom: true, lang: lang),
                 child: Container(
-                  padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+                  padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
                   decoration: BoxDecoration(
-                    color: Colors.white,
-                    borderRadius: BorderRadius.circular(10),
+                    color: const Color(0xFFF8FAFC),
+                    borderRadius: BorderRadius.circular(12),
                     border: Border.all(color: const Color(0xFFE2E8F0)),
                   ),
                   child: Row(
                     children: [
-                      CryptoIcon(networkId: _fromToken?.symbol ?? 'ETH', size: 24),
+                      CryptoIcon(networkId: _fromToken?.symbol ?? 'POL', size: 24),
                       const SizedBox(width: 8),
                       Text(
-                        _fromToken?.symbol ?? 'Select',
-                        style: const TextStyle(fontWeight: FontWeight.w700, fontSize: 14, color: Color(0xFF1E293B)),
+                        _fromToken?.symbol ?? 'POL',
+                        style: const TextStyle(fontSize: 15, fontWeight: FontWeight.w700, color: Color(0xFF1E293B)),
                       ),
-                      const Icon(Icons.arrow_drop_down_rounded, size: 20, color: Color(0xFF64748B)),
+                      const SizedBox(width: 4),
+                      const Icon(Icons.keyboard_arrow_down_rounded, size: 20, color: Color(0xFF64748B)),
                     ],
                   ),
                 ),
@@ -344,66 +432,72 @@ class _SwapScreenState extends State<SwapScreen> {
                   controller: _fromAmountController,
                   keyboardType: const TextInputType.numberWithOptions(decimal: true),
                   textAlign: TextAlign.end,
-                  style: const TextStyle(fontSize: 20, fontWeight: FontWeight.w700, color: Color(0xFF1E293B)),
+                  style: const TextStyle(fontSize: 24, fontWeight: FontWeight.w700, color: Color(0xFF0F172A)),
                   onChanged: (_) => setState(() {}),
                   decoration: const InputDecoration(
-                    hintText: 'Transfer out',
-                    hintStyle: TextStyle(fontSize: 16, color: Color(0xFFCBD5E1), fontWeight: FontWeight.normal),
+                    hintText: '0.0',
+                    hintStyle: TextStyle(fontSize: 24, fontWeight: FontWeight.w700, color: Color(0xFFCBD5E1)),
                     border: InputBorder.none,
+                    enabledBorder: InputBorder.none,
+                    focusedBorder: InputBorder.none,
                     isDense: true,
-                    contentPadding: EdgeInsets.zero,
+                    contentPadding: EdgeInsets.symmetric(vertical: 8),
                   ),
                 ),
               ),
             ],
-          ),
-          const SizedBox(height: 6),
-          Align(
-            alignment: Alignment.centerRight,
-            child: Text(
-              'Balance: ${_fromToken?.formattedBalance ?? '0.00'}',
-              style: const TextStyle(fontSize: 11, color: Color(0xFF94A3B8)),
-            ),
           ),
         ],
       ),
     );
   }
 
-  Widget _buildToCard(BuildContext context, List<Token> tokens, double estimatedAmount) {
+  Widget _buildToCard(BuildContext context, List<Token> tokens, double estimatedToAmount, LanguageController lang) {
     return Container(
-      padding: const EdgeInsets.all(14),
+      padding: const EdgeInsets.all(16),
       decoration: BoxDecoration(
         color: const Color(0xFFF8FAFC),
-        borderRadius: BorderRadius.circular(14),
-        border: Border.all(color: const Color(0xFFE2E8F0)),
+        borderRadius: BorderRadius.circular(16),
+        border: Border.all(color: const Color(0xFFCBD5E1), width: 1.2),
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          const Text('To (estimated)', style: TextStyle(fontSize: 12, color: Color(0xFF64748B), fontWeight: FontWeight.w600)),
-          const SizedBox(height: 10),
+          Row(
+            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+            children: [
+              Text(
+                lang.tr('to_label'),
+                style: const TextStyle(fontSize: 13, color: Color(0xFF475569), fontWeight: FontWeight.w600),
+              ),
+              Text(
+                '${lang.tr('balance_prefix')}${_toToken?.formattedBalance ?? '0.00'}',
+                style: const TextStyle(fontSize: 12, color: Color(0xFF64748B)),
+              ),
+            ],
+          ),
+          const SizedBox(height: 12),
           Row(
             children: [
-              // Token selector chip
               GestureDetector(
-                onTap: () => _showTokenPicker(context, tokens, isFrom: false),
+                onTap: () => _showTokenPicker(context, tokens, isFrom: false, lang: lang),
                 child: Container(
-                  padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+                  padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
                   decoration: BoxDecoration(
                     color: Colors.white,
-                    borderRadius: BorderRadius.circular(10),
-                    border: Border.all(color: const Color(0xFFE2E8F0)),
+                    borderRadius: BorderRadius.circular(12),
+                    border: Border.all(color: const Color(0xFFCBD5E1)),
                   ),
                   child: Row(
                     children: [
                       CryptoIcon(networkId: _toToken?.symbol ?? 'USDT', size: 24),
                       const SizedBox(width: 8),
                       Text(
-                        _toToken?.symbol ?? 'Select',
-                        style: const TextStyle(fontWeight: FontWeight.w700, fontSize: 14, color: Color(0xFF1E293B)),
+                        _toToken?.symbol ?? 'USDT',
+                        style: const TextStyle(fontSize: 15, fontWeight: FontWeight.w700, color: Color(0xFF1E293B)),
                       ),
-                      const Icon(Icons.arrow_drop_down_rounded, size: 20, color: Color(0xFF64748B)),
+                      const SizedBox(width: 4),
+                      const Icon(Icons.keyboard_arrow_down_rounded, size: 20, color: Color(0xFF64748B)),
                     ],
                   ),
                 ),
@@ -411,31 +505,23 @@ class _SwapScreenState extends State<SwapScreen> {
               const SizedBox(width: 12),
               Expanded(
                 child: Text(
-                  estimatedAmount > 0 ? estimatedAmount.toStringAsFixed(4) : 'Receive',
+                  estimatedToAmount > 0 ? estimatedToAmount.toStringAsFixed(4) : '0.0',
                   textAlign: TextAlign.end,
                   style: TextStyle(
-                    fontSize: 20,
+                    fontSize: 24,
                     fontWeight: FontWeight.w700,
-                    color: estimatedAmount > 0 ? const Color(0xFF1E293B) : const Color(0xFFCBD5E1),
+                    color: estimatedToAmount > 0 ? const Color(0xFF0F172A) : const Color(0xFF94A3B8),
                   ),
                 ),
               ),
             ],
-          ),
-          const SizedBox(height: 6),
-          Align(
-            alignment: Alignment.centerRight,
-            child: Text(
-              'Balance: ${_toToken?.formattedBalance ?? '0.00'}',
-              style: const TextStyle(fontSize: 11, color: Color(0xFF94A3B8)),
-            ),
           ),
         ],
       ),
     );
   }
 
-  Widget _buildDetailsBox(double rate, double minReceived) {
+  Widget _buildDetailsBox(double rate, double minReceived, LanguageController lang) {
     return Container(
       padding: const EdgeInsets.all(12),
       decoration: BoxDecoration(
@@ -444,25 +530,44 @@ class _SwapScreenState extends State<SwapScreen> {
       ),
       child: Column(
         children: [
-          _buildDetailRow('Swap Rate', '1 ${_fromToken?.symbol ?? ''} ≈ ${rate.toStringAsFixed(4)} ${_toToken?.symbol ?? ''}'),
-          _buildDetailRow('Min Receive', '${minReceived.toStringAsFixed(4)} ${_toToken?.symbol ?? ''}'),
-          _buildDetailRow('Slippage', '$_slippage%'),
-          _buildDetailRow('Price Impact', '< 0.01%'),
-          _buildDetailRow('Service Fee', '0.00%'),
-          _buildDetailRow('Route', 'Direct LP / Transit'),
-        ],
-      ),
-    );
-  }
-
-  Widget _buildDetailRow(String label, String value) {
-    return Padding(
-      padding: const EdgeInsets.symmetric(vertical: 4),
-      child: Row(
-        mainAxisAlignment: MainAxisAlignment.spaceBetween,
-        children: [
-          Text(label, style: const TextStyle(fontSize: 12, color: Color(0xFF64748B))),
-          Text(value, style: const TextStyle(fontSize: 12, fontWeight: FontWeight.w600, color: Color(0xFF334155))),
+          Row(
+            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+            children: [
+              Text(lang.tr('rate'), style: const TextStyle(fontSize: 12, color: Color(0xFF64748B))),
+              Text(
+                '1 ${_fromToken?.symbol ?? ''} ≈ ${rate.toStringAsFixed(4)} ${_toToken?.symbol ?? ''}',
+                style: const TextStyle(fontSize: 12, fontWeight: FontWeight.w600, color: Color(0xFF334155)),
+              ),
+            ],
+          ),
+          const SizedBox(height: 6),
+          Row(
+            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+            children: [
+              Text(lang.tr('min_received'), style: const TextStyle(fontSize: 12, color: Color(0xFF64748B))),
+              Text(
+                '${minReceived > 0 ? minReceived.toStringAsFixed(4) : '0.00'} ${_toToken?.symbol ?? ''}',
+                style: const TextStyle(fontSize: 12, fontWeight: FontWeight.w600, color: Color(0xFF334155)),
+              ),
+            ],
+          ),
+          const SizedBox(height: 6),
+          Row(
+            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+            children: [
+              Text(lang.tr('route'), style: const TextStyle(fontSize: 12, color: Color(0xFF64748B))),
+              Row(
+                children: [
+                  const Icon(Icons.route_rounded, size: 14, color: Color(0xFF2563EB)),
+                  const SizedBox(width: 4),
+                  Text(
+                    'Transit Aggregator (Best Rate)',
+                    style: const TextStyle(fontSize: 12, fontWeight: FontWeight.w600, color: Color(0xFF2563EB)),
+                  ),
+                ],
+              ),
+            ],
+          ),
         ],
       ),
     );
@@ -476,7 +581,7 @@ class _SwapScreenState extends State<SwapScreen> {
     });
   }
 
-  void _showTokenPicker(BuildContext context, List<Token> tokens, {required bool isFrom}) {
+  void _showTokenPicker(BuildContext context, List<Token> tokens, {required bool isFrom, required LanguageController lang}) {
     showModalBottomSheet(
       context: context,
       backgroundColor: Colors.white,
@@ -490,7 +595,7 @@ class _SwapScreenState extends State<SwapScreen> {
             mainAxisSize: MainAxisSize.min,
             children: [
               Text(
-                isFrom ? 'Select Source Token' : 'Select Target Token',
+                lang.tr('select_token'),
                 style: const TextStyle(fontSize: 16, fontWeight: FontWeight.w700),
               ),
               const SizedBox(height: 12),
@@ -518,7 +623,7 @@ class _SwapScreenState extends State<SwapScreen> {
     );
   }
 
-  void _showSlippageSheet(BuildContext context) {
+  void _showSlippageSheet(BuildContext context, LanguageController lang) {
     showModalBottomSheet(
       context: context,
       backgroundColor: Colors.white,
@@ -533,7 +638,7 @@ class _SwapScreenState extends State<SwapScreen> {
               mainAxisSize: MainAxisSize.min,
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                const Text('Slippage Tolerance', style: TextStyle(fontSize: 16, fontWeight: FontWeight.w700)),
+                Text(lang.tr('slippage_tolerance'), style: const TextStyle(fontSize: 16, fontWeight: FontWeight.w700)),
                 const SizedBox(height: 14),
                 Row(
                   children: [0.5, 1.0, 2.0, 3.0].map((val) {
@@ -575,7 +680,22 @@ class _SwapScreenState extends State<SwapScreen> {
     );
   }
 
-  void _handleSwap(BuildContext context, double fromAmount, double toAmount) async {
+  void _handleSwap(
+    BuildContext context,
+    double fromAmount,
+    double toAmount,
+    LanguageController lang,
+  ) async {
+    if (_fromToken != null && fromAmount > _fromToken!.balance) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text(lang.tr('err_insufficient_balance')),
+          backgroundColor: const Color(0xFFEF4444),
+        ),
+      );
+      return;
+    }
+
     setState(() => _isSwapping = true);
     await Future.delayed(const Duration(milliseconds: 600));
     if (mounted) {
@@ -604,13 +724,29 @@ class _SwapScreenState extends State<SwapScreen> {
           tokenSymbol: _toToken!.symbol,
           amount: toAmount,
         );
+
+        _swapHistory.insert(
+          0,
+          SwapRecord(
+            fromSymbol: _fromToken!.symbol,
+            toSymbol: _toToken!.symbol,
+            fromAmount: fromAmount,
+            toAmount: toAmount,
+            timestamp: DateTime.now(),
+          ),
+        );
       }
 
       setState(() => _isSwapping = false);
       _fromAmountController.clear();
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
-          content: Text('Swapped $fromAmount ${_fromToken?.symbol} to ${toAmount.toStringAsFixed(4)} ${_toToken?.symbol}!'),
+          content: Text(lang.tr('swap_swapped_success', params: {
+            'fromAmount': '$fromAmount',
+            'fromToken': _fromToken?.symbol ?? '',
+            'toAmount': toAmount.toStringAsFixed(4),
+            'toToken': _toToken?.symbol ?? '',
+          })),
           backgroundColor: const Color(0xFF10B981),
         ),
       );

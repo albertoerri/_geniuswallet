@@ -1,12 +1,16 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import '../../../domain/models/network.dart';
+import '../../controllers/language_controller.dart';
 import '../../controllers/network_controller.dart';
 import '../../widgets/add_wallet_bottom_sheet.dart';
 import '../../widgets/crypto_icon.dart';
 import '../create_wallet/create_wallet_config_screen.dart';
 import '../import_wallet/import_wallet_screen.dart';
 import '../import_wallet/import_wallets_options_screen.dart';
+import 'hardware_wallet_screen.dart';
+import 'identity_wallet_screen.dart';
+import 'multisig_wallet_screen.dart';
 
 class SelectNetworkScreen extends StatefulWidget {
   final bool? isImport;
@@ -68,6 +72,7 @@ class _SelectNetworkScreenState extends State<SelectNetworkScreen> {
 
   @override
   Widget build(BuildContext context) {
+    final lang = context.watch<LanguageController>();
     final networkController = context.watch<NetworkController>();
     final networks = networkController.networks;
 
@@ -77,9 +82,9 @@ class _SelectNetworkScreenState extends State<SelectNetworkScreen> {
         backgroundColor: Colors.white,
         elevation: 0,
         centerTitle: true,
-        title: const Text(
-          'Select A Network',
-          style: TextStyle(
+        title: Text(
+          lang.tr('select_network_title'),
+          style: const TextStyle(
             fontSize: 17,
             fontWeight: FontWeight.w600,
             color: Color(0xFF1E293B),
@@ -107,18 +112,26 @@ class _SelectNetworkScreenState extends State<SelectNetworkScreen> {
                   _buildTopOption(
                     icon: Icons.apps_rounded,
                     iconColor: const Color(0xFF2563EB),
-                    title: 'HD Wallet',
+                    title: lang.tr('hd_wallet'),
                     hasHelp: true,
-                    onTap: () => _onSelectHDWallet(networks.isNotEmpty ? networks.first : null),
+                    onTap: () {
+                      Navigator.of(context).push(
+                        MaterialPageRoute(
+                          builder: (_) => IdentityWalletScreen(isImport: widget.isImport),
+                        ),
+                      );
+                    },
                   ),
                   const Divider(height: 1, indent: 56, color: Color(0xFFF1F5F9)),
                   _buildTopOption(
                     icon: Icons.hub_rounded,
                     iconColor: const Color(0xFF0284C7),
-                    title: 'MultiSig Wallet',
+                    title: lang.tr('multisig_wallet'),
                     onTap: () {
-                      ScaffoldMessenger.of(context).showSnackBar(
-                        const SnackBar(content: Text('MultiSig Wallet support coming soon!')),
+                      Navigator.of(context).push(
+                        MaterialPageRoute(
+                          builder: (_) => const MultiSigWalletScreen(),
+                        ),
                       );
                     },
                   ),
@@ -126,10 +139,12 @@ class _SelectNetworkScreenState extends State<SelectNetworkScreen> {
                   _buildTopOption(
                     icon: Icons.phonelink_lock_rounded,
                     iconColor: const Color(0xFF3B82F6),
-                    title: 'Hardware wallet',
+                    title: lang.tr('hardware_wallet'),
                     onTap: () {
-                      ScaffoldMessenger.of(context).showSnackBar(
-                        const SnackBar(content: Text('Hardware Wallet support coming soon!')),
+                      Navigator.of(context).push(
+                        MaterialPageRoute(
+                          builder: (_) => const HardwareWalletScreen(),
+                        ),
                       );
                     },
                   ),
@@ -140,9 +155,9 @@ class _SelectNetworkScreenState extends State<SelectNetworkScreen> {
             const SizedBox(height: 20),
 
             // "SingleNetwork" Section Label
-            const Text(
-              'SingleNetwork',
-              style: TextStyle(
+            Text(
+              lang.tr('single_network'),
+              style: const TextStyle(
                 fontSize: 14,
                 fontWeight: FontWeight.w600,
                 color: Color(0xFF64748B),
@@ -164,27 +179,31 @@ class _SelectNetworkScreenState extends State<SelectNetworkScreen> {
                   Padding(
                     padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 6),
                     child: Container(
-                      height: 40,
+                      height: 46,
                       decoration: BoxDecoration(
-                        color: const Color(0xFFF1F5F9),
-                        borderRadius: BorderRadius.circular(10),
+                        color: Colors.white,
+                        borderRadius: BorderRadius.circular(14),
+                        border: Border.all(color: const Color(0xFFCBD5E1), width: 1.2),
                       ),
                       child: TextField(
                         controller: _searchController,
                         onChanged: (val) => networkController.search(val),
-                        decoration: const InputDecoration(
-                          hintText: 'Search with network or token symbol',
-                          hintStyle: TextStyle(
+                        style: const TextStyle(fontSize: 14, fontWeight: FontWeight.w500, color: Color(0xFF0F172A)),
+                        decoration: InputDecoration(
+                          hintText: lang.tr('search_network_hint'),
+                          hintStyle: const TextStyle(
                             fontSize: 13,
                             color: Color(0xFF94A3B8),
                           ),
-                          prefixIcon: Icon(
+                          prefixIcon: const Icon(
                             Icons.search_rounded,
-                            color: Color(0xFF94A3B8),
-                            size: 20,
+                            color: Color(0xFF64748B),
+                            size: 22,
                           ),
-                          contentPadding: EdgeInsets.zero,
+                          contentPadding: const EdgeInsets.symmetric(vertical: 12),
                           border: InputBorder.none,
+                          enabledBorder: InputBorder.none,
+                          focusedBorder: InputBorder.none,
                           isDense: true,
                         ),
                       ),

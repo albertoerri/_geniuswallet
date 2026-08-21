@@ -3,6 +3,7 @@ import 'package:flutter/services.dart';
 import 'package:provider/provider.dart';
 import 'package:qr_flutter/qr_flutter.dart';
 import '../../../core/constants/app_colors.dart';
+import '../../controllers/language_controller.dart';
 import '../../controllers/network_controller.dart';
 import '../../controllers/wallet_controller.dart';
 import '../../widgets/crypto_icon.dart';
@@ -20,14 +21,15 @@ class _ReceiveScreenState extends State<ReceiveScreen> {
 
   @override
   Widget build(BuildContext context) {
+    final lang = context.watch<LanguageController>();
     final walletController = context.watch<WalletController>();
     final networkController = context.watch<NetworkController>();
     final activeWallet = walletController.activeWallet;
 
     if (activeWallet == null) {
       return Scaffold(
-        appBar: AppBar(title: const Text('Receive')),
-        body: const Center(child: Text('No active wallet')),
+        appBar: AppBar(title: Text(lang.tr('receive_title'))),
+        body: Center(child: Text(lang.tr('no_active_wallet'))),
       );
     }
 
@@ -43,7 +45,10 @@ class _ReceiveScreenState extends State<ReceiveScreen> {
     return Scaffold(
       backgroundColor: const Color(0xFFF7F8FA),
       appBar: AppBar(
-        title: Text('Receive ${network.name}', style: const TextStyle(fontWeight: FontWeight.w600, fontSize: 17)),
+        title: Text(
+          lang.tr('receive_on_network', params: {'network': network.name}),
+          style: const TextStyle(fontWeight: FontWeight.w600, fontSize: 17),
+        ),
         backgroundColor: Colors.white,
         elevation: 0,
         centerTitle: true,
@@ -70,7 +75,10 @@ class _ReceiveScreenState extends State<ReceiveScreen> {
                   const SizedBox(width: 8),
                   Expanded(
                     child: Text(
-                      'Only send ${network.name} (${network.symbol}) and compatible tokens to this address.',
+                      lang.tr('receive_guide_tip', params: {
+                        'network': network.name,
+                        'symbol': network.symbol,
+                      }),
                       style: const TextStyle(fontSize: 12, color: Color(0xFF1E40AF), fontWeight: FontWeight.w500),
                     ),
                   ),
@@ -130,7 +138,10 @@ class _ReceiveScreenState extends State<ReceiveScreen> {
                         borderRadius: BorderRadius.circular(8),
                       ),
                       child: Text(
-                        'Requested: $_requestedAmount ${network.symbol}',
+                        lang.tr('requested_amount', params: {
+                          'amount': '$_requestedAmount',
+                          'symbol': network.symbol,
+                        }),
                         style: const TextStyle(fontSize: 13, fontWeight: FontWeight.w600, color: Color(0xFF2563EB)),
                       ),
                     ),
@@ -167,7 +178,10 @@ class _ReceiveScreenState extends State<ReceiveScreen> {
                     height: 48,
                     child: ElevatedButton.icon(
                       icon: const Icon(Icons.copy_rounded, size: 18, color: Colors.white),
-                      label: const Text('Copy Address', style: TextStyle(color: Colors.white, fontWeight: FontWeight.w600)),
+                      label: Text(
+                        lang.tr('copy_address'),
+                        style: const TextStyle(color: Colors.white, fontWeight: FontWeight.w600),
+                      ),
                       style: ElevatedButton.styleFrom(
                         backgroundColor: const Color(0xFF2563EB),
                         shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
@@ -176,7 +190,7 @@ class _ReceiveScreenState extends State<ReceiveScreen> {
                       onPressed: () {
                         Clipboard.setData(ClipboardData(text: activeWallet.address));
                         ScaffoldMessenger.of(context).showSnackBar(
-                          const SnackBar(content: Text('Address copied to clipboard!')),
+                          SnackBar(content: Text(lang.tr('address_copied'))),
                         );
                       },
                     ),
@@ -194,7 +208,7 @@ class _ReceiveScreenState extends State<ReceiveScreen> {
                   child: OutlinedButton.icon(
                     icon: const Icon(Icons.tune_rounded, size: 18, color: Color(0xFF334155)),
                     label: Text(
-                      _requestedAmount == null ? 'Set Amount' : 'Clear Amount',
+                      _requestedAmount == null ? lang.tr('set_amount') : lang.tr('clear_history'),
                       style: const TextStyle(color: Color(0xFF334155), fontWeight: FontWeight.w600),
                     ),
                     style: OutlinedButton.styleFrom(
@@ -203,16 +217,16 @@ class _ReceiveScreenState extends State<ReceiveScreen> {
                       shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
                       padding: const EdgeInsets.symmetric(vertical: 14),
                     ),
-                    onPressed: () => _handleSetAmount(context, network.symbol),
+                    onPressed: () => _handleSetAmount(context, network.symbol, lang),
                   ),
                 ),
                 const SizedBox(width: 12),
                 Expanded(
                   child: OutlinedButton.icon(
                     icon: const Icon(Icons.share_outlined, size: 18, color: Color(0xFF334155)),
-                    label: const Text(
-                      'Share Address',
-                      style: TextStyle(color: Color(0xFF334155), fontWeight: FontWeight.w600),
+                    label: Text(
+                      lang.tr('share_address'),
+                      style: const TextStyle(color: Color(0xFF334155), fontWeight: FontWeight.w600),
                     ),
                     style: OutlinedButton.styleFrom(
                       backgroundColor: Colors.white,
@@ -223,7 +237,7 @@ class _ReceiveScreenState extends State<ReceiveScreen> {
                     onPressed: () {
                       Clipboard.setData(ClipboardData(text: activeWallet.address));
                       ScaffoldMessenger.of(context).showSnackBar(
-                        const SnackBar(content: Text('Address copied ready to share!')),
+                        SnackBar(content: Text(lang.tr('address_copied_share'))),
                       );
                     },
                   ),
@@ -238,7 +252,7 @@ class _ReceiveScreenState extends State<ReceiveScreen> {
     );
   }
 
-  void _handleSetAmount(BuildContext context, String symbol) {
+  void _handleSetAmount(BuildContext context, String symbol, LanguageController lang) {
     if (_requestedAmount != null) {
       setState(() => _requestedAmount = null);
       return;
@@ -249,25 +263,38 @@ class _ReceiveScreenState extends State<ReceiveScreen> {
       context: context,
       builder: (ctx) => AlertDialog(
         shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
-        title: Text('Set Amount ($symbol)', style: const TextStyle(fontSize: 17, fontWeight: FontWeight.w600)),
+        title: Text('${lang.tr('set_amount')} ($symbol)', style: const TextStyle(fontSize: 17, fontWeight: FontWeight.w600)),
         content: TextField(
           controller: amountController,
           keyboardType: const TextInputType.numberWithOptions(decimal: true),
           autofocus: true,
+          style: const TextStyle(fontSize: 18, fontWeight: FontWeight.w700, color: Color(0xFF0F172A)),
           decoration: InputDecoration(
             hintText: '0.00',
+            hintStyle: const TextStyle(fontSize: 18, fontWeight: FontWeight.w700, color: Color(0xFFCBD5E1)),
             filled: true,
-            fillColor: const Color(0xFFF8FAFC),
+            fillColor: Colors.white,
+            contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 15),
+            suffixText: symbol,
+            suffixStyle: const TextStyle(fontSize: 15, fontWeight: FontWeight.w700, color: Color(0xFF1E293B)),
             border: OutlineInputBorder(
-              borderRadius: BorderRadius.circular(10),
-              borderSide: const BorderSide(color: Color(0xFFE2E8F0)),
+              borderRadius: BorderRadius.circular(14),
+              borderSide: const BorderSide(color: Color(0xFFCBD5E1), width: 1.2),
+            ),
+            enabledBorder: OutlineInputBorder(
+              borderRadius: BorderRadius.circular(14),
+              borderSide: const BorderSide(color: Color(0xFFCBD5E1), width: 1.2),
+            ),
+            focusedBorder: OutlineInputBorder(
+              borderRadius: BorderRadius.circular(14),
+              borderSide: const BorderSide(color: Color(0xFF2563EB), width: 2.0),
             ),
           ),
         ),
         actions: [
           TextButton(
             onPressed: () => Navigator.of(ctx).pop(),
-            child: const Text('Cancel', style: TextStyle(color: Color(0xFF64748B))),
+            child: Text(lang.tr('cancel'), style: const TextStyle(color: Color(0xFF64748B))),
           ),
           ElevatedButton(
             style: ElevatedButton.styleFrom(
@@ -281,7 +308,7 @@ class _ReceiveScreenState extends State<ReceiveScreen> {
               }
               Navigator.of(ctx).pop();
             },
-            child: const Text('Confirm', style: TextStyle(color: Colors.white)),
+            child: Text(lang.tr('confirm'), style: const TextStyle(color: Colors.white)),
           ),
         ],
       ),
