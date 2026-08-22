@@ -7,10 +7,14 @@ import 'package:geniuswallet/domain/models/network.dart';
 import 'package:geniuswallet/domain/models/token.dart';
 import 'package:geniuswallet/domain/models/wallet.dart';
 import 'package:geniuswallet/presentation/controllers/asset_controller.dart';
+import 'package:geniuswallet/presentation/controllers/environment_controller.dart';
 import 'package:geniuswallet/presentation/controllers/language_controller.dart';
 import 'package:geniuswallet/presentation/controllers/market_controller.dart';
 import 'package:geniuswallet/presentation/controllers/network_controller.dart';
 import 'package:geniuswallet/presentation/controllers/wallet_controller.dart';
+import 'package:geniuswallet/services/environment_service.dart';
+import 'package:geniuswallet/services/onchain_transaction_service.dart';
+import 'package:provider/provider.dart';
 import 'package:geniuswallet/presentation/screens/assets/wallet_dashboard_screen.dart';
 import 'package:geniuswallet/presentation/screens/assets/welcome_screen.dart';
 import 'package:geniuswallet/presentation/screens/market/market_screen.dart';
@@ -148,6 +152,10 @@ void main() {
     mockWalletRepo.secrets[ethereumWallet.id] = '0x4f3edf983ac636a65a842ce7c78d9aa706d3b113bce9c46f30d7d21715b23b1d';
     mockWalletRepo.secrets[bscWallet.id] = jsonEncode({'address': bscWallet.address, 'crypto': {'cipher': 'aes-128-ctr'}});
 
+    final envService = EnvironmentService(prefs: sharedPrefs);
+    final envController = EnvironmentController(service: envService);
+    final onChainService = OnChainTransactionService();
+
     networkController = NetworkController(networkRepo);
     walletController = WalletController(repository: mockWalletRepo);
     languageController = LanguageController(localStorage);
@@ -164,8 +172,16 @@ void main() {
   });
 
   Widget buildTestApp(Widget child) {
+    final envService = EnvironmentService();
+    final envController = EnvironmentController(service: envService);
+    final onChainService = OnChainTransactionService();
+
     return MultiProvider(
       providers: [
+        Provider<IEnvironmentService>.value(value: envService),
+        Provider<IOnChainTransactionService>.value(value: onChainService),
+        Provider<ICryptoKeyService>.value(value: CryptoKeyService()),
+        ChangeNotifierProvider<EnvironmentController>.value(value: envController),
         ChangeNotifierProvider<LanguageController>.value(value: languageController),
         ChangeNotifierProvider<WalletController>.value(value: walletController),
         ChangeNotifierProvider<NetworkController>.value(value: networkController),

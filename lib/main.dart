@@ -3,6 +3,7 @@ import 'package:provider/provider.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'core/theme/app_theme.dart';
 import 'presentation/controllers/asset_controller.dart';
+import 'presentation/controllers/environment_controller.dart';
 import 'presentation/controllers/language_controller.dart';
 import 'presentation/controllers/market_controller.dart';
 import 'presentation/controllers/network_controller.dart';
@@ -13,7 +14,12 @@ import 'repositories/network_repository.dart';
 import 'repositories/wallet_repository.dart';
 import 'services/asset_service.dart';
 import 'services/crypto_key_service.dart';
+import 'services/dex_aggregator_service.dart';
+import 'services/environment_service.dart';
+import 'services/lifi_swap_service.dart';
 import 'services/network_service.dart';
+import 'services/onchain_transaction_service.dart';
+import 'services/transaction_history_service.dart';
 import 'services/wallet_service.dart';
 import 'storage/local_storage_service.dart';
 import 'storage/secure_storage_service.dart';
@@ -31,6 +37,11 @@ void main() async {
   final networkService = NetworkService();
   final walletService = WalletService(cryptoService: cryptoKeyService);
   final assetService = AssetService();
+  final environmentService = EnvironmentService(prefs: sharedPrefs);
+  final onChainTransactionService = OnChainTransactionService();
+  final transactionHistoryService = TransactionHistoryService();
+  final dexAggregatorService = DexAggregatorService(onChainService: onChainTransactionService);
+  final lifiSwapService = LifiSwapService(onChainService: onChainTransactionService);
 
   // 3. Initialize Repository Layer
   final networkRepository = NetworkRepository(
@@ -46,6 +57,15 @@ void main() async {
   runApp(
     MultiProvider(
       providers: [
+        Provider<IEnvironmentService>.value(value: environmentService),
+        Provider<IOnChainTransactionService>.value(value: onChainTransactionService),
+        Provider<ICryptoKeyService>.value(value: cryptoKeyService),
+        Provider<ITransactionHistoryService>.value(value: transactionHistoryService),
+        Provider<IDexAggregatorService>.value(value: dexAggregatorService),
+        Provider<ILifiSwapService>.value(value: lifiSwapService),
+        ChangeNotifierProvider(
+          create: (_) => EnvironmentController(service: environmentService),
+        ),
         ChangeNotifierProvider(
           create: (_) => LanguageController(localStorageService),
         ),

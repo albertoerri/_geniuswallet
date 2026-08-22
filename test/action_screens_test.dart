@@ -6,10 +6,14 @@ import 'package:geniuswallet/domain/models/network.dart';
 import 'package:geniuswallet/domain/models/token.dart';
 import 'package:geniuswallet/domain/models/wallet.dart';
 import 'package:geniuswallet/presentation/controllers/asset_controller.dart';
+import 'package:geniuswallet/presentation/controllers/environment_controller.dart';
 import 'package:geniuswallet/presentation/controllers/language_controller.dart';
 import 'package:geniuswallet/presentation/controllers/market_controller.dart';
 import 'package:geniuswallet/presentation/controllers/network_controller.dart';
 import 'package:geniuswallet/presentation/controllers/wallet_controller.dart';
+import 'package:geniuswallet/services/crypto_key_service.dart';
+import 'package:geniuswallet/services/environment_service.dart';
+import 'package:geniuswallet/services/onchain_transaction_service.dart';
 import 'package:geniuswallet/presentation/screens/assets/wallet_dashboard_screen.dart';
 import 'package:geniuswallet/presentation/screens/scan/scan_qr_screen.dart';
 import 'package:geniuswallet/presentation/screens/search/search_hub_screen.dart';
@@ -129,8 +133,16 @@ void main() {
   });
 
   Widget createTestApp(Widget child) {
+    final envService = EnvironmentService();
+    final envController = EnvironmentController(service: envService);
+    final onChainService = OnChainTransactionService();
+
     return MultiProvider(
       providers: [
+        Provider<IEnvironmentService>.value(value: envService),
+        Provider<IOnChainTransactionService>.value(value: onChainService),
+        Provider<ICryptoKeyService>.value(value: CryptoKeyService()),
+        ChangeNotifierProvider<EnvironmentController>.value(value: envController),
         ChangeNotifierProvider<LanguageController>.value(value: languageController),
         ChangeNotifierProvider<NetworkController>.value(value: networkController),
         ChangeNotifierProvider<WalletController>.value(value: walletController),
@@ -224,14 +236,14 @@ void main() {
     await tester.pumpWidget(createTestApp(const MoreToolsScreen()));
     await tester.pumpAndSettle();
 
-    expect(find.text('More Tools'), findsOneWidget);
-    expect(find.text('Batch Transfer'), findsOneWidget);
-    expect(find.text('Approval & Revoke'), findsOneWidget);
-    expect(find.text('Token Security Check'), findsOneWidget);
-    expect(find.text('Node Speed & Switcher'), findsOneWidget);
-    expect(find.text('Gas Price Radar'), findsOneWidget);
-    expect(find.text('Message Sign & Verify'), findsOneWidget);
-    expect(find.text('Security Health Check'), findsOneWidget);
+    expect(find.text(languageController.tr('more_tools_title')), findsOneWidget);
+    expect(find.text(languageController.tr('batch_transfer')), findsOneWidget);
+    expect(find.text(languageController.tr('approval_revoke')), findsOneWidget);
+    expect(find.text(languageController.tr('token_security')), findsOneWidget);
+    expect(find.text(languageController.tr('rpc_switcher')), findsOneWidget);
+    expect(find.text(languageController.tr('gas_tracker')), findsOneWidget);
+    expect(find.text(languageController.tr('msg_signer')), findsOneWidget);
+    expect(find.text(languageController.tr('security_audit')), findsOneWidget);
   });
 
   testWidgets('SearchHubScreen renders search bar, trending tags, and filters DApps & tokens', (tester) async {

@@ -26,6 +26,7 @@ abstract class ICryptoKeyService {
   DerivedKeyResult deriveFromKeystore(String keystoreJson, String password);
   DerivedKeyResult deriveFromAddress(String address);
   String generateMnemonic();
+  String signPersonalMessage({required String message, required String privateKeyHex});
 }
 
 class CryptoKeyService implements ICryptoKeyService {
@@ -138,5 +139,12 @@ class CryptoKeyService implements ICryptoKeyService {
   @override
   String generateMnemonic() {
     return bip39.generateMnemonic();
+  }
+
+  @override
+  String signPersonalMessage({required String message, required String privateKeyHex}) {
+    final ethKey = EthPrivateKey.fromHex(privateKeyHex);
+    final sig = ethKey.signPersonalMessageToUint8List(Uint8List.fromList(message.codeUnits));
+    return '0x${HEX.encode(sig)}';
   }
 }

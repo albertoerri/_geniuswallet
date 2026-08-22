@@ -5,7 +5,12 @@ import '../../../core/constants/app_colors.dart';
 import '../../../core/utils/formatters.dart';
 import '../../../domain/models/token.dart';
 import '../../../domain/models/wallet.dart';
+import '../../../domain/models/network.dart';
+import '../../../services/crypto_key_service.dart';
+import '../../../services/environment_service.dart';
+import '../../../services/onchain_transaction_service.dart';
 import '../../controllers/asset_controller.dart';
+import '../../controllers/environment_controller.dart';
 import '../../controllers/language_controller.dart';
 import '../../controllers/network_controller.dart';
 import '../../controllers/wallet_controller.dart';
@@ -58,6 +63,12 @@ class _SendScreenState extends State<SendScreen> {
     final walletController = context.watch<WalletController>();
     final networkController = context.watch<NetworkController>();
     final assetController = context.watch<AssetController>();
+    EnvironmentController? envController;
+    try {
+      envController = context.watch<EnvironmentController>();
+    } catch (_) {
+      envController = null;
+    }
     final activeWallet = walletController.activeWallet;
 
     if (activeWallet == null) {
@@ -108,6 +119,11 @@ class _SendScreenState extends State<SendScreen> {
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
+            // Environment Status Banner
+            _buildEnvironmentBanner(envController, network, lang),
+
+            const SizedBox(height: 14),
+
             // Token Selector Card
             _buildTokenSelectorCard(context, tokens, lang),
 
@@ -140,7 +156,7 @@ class _SendScreenState extends State<SendScreen> {
                 ),
                 onPressed: _isSending
                     ? null
-                    : () => _handleConfirmSend(context, activeWallet, network.name, lang),
+                    : () => _handleConfirmSend(context, activeWallet, network, lang, envController),
                 child: _isSending
                     ? const SizedBox(
                         width: 22,
@@ -161,6 +177,54 @@ class _SendScreenState extends State<SendScreen> {
     );
   }
 
+  Widget _buildEnvironmentBanner(EnvironmentController? envController, Network network, LanguageController lang) {
+    final isLive = envController?.isLive ?? true;
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
+      decoration: BoxDecoration(
+        color: isLive ? const Color(0xFFF0FDF4) : const Color(0xFFFEFCE8),
+        borderRadius: BorderRadius.circular(12),
+        border: Border.all(
+          color: isLive ? const Color(0xFFBBF7D0) : const Color(0xFFFEF08A),
+        ),
+      ),
+      child: Row(
+        children: [
+          Icon(
+            isLive ? Icons.sensors_rounded : Icons.science_outlined,
+            size: 20,
+            color: isLive ? const Color(0xFF16A34A) : const Color(0xFFCA8A04),
+          ),
+          const SizedBox(width: 10),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  isLive
+                      ? '${lang.tr('env_badge_live')}: ${network.name} (ChainID ${network.chainId})'
+                      : '${lang.tr('env_badge_sim')}: ${lang.tr('env_mode_simulation')}',
+                  style: TextStyle(
+                    fontSize: 13,
+                    fontWeight: FontWeight.w700,
+                    color: isLive ? const Color(0xFF15803D) : const Color(0xFF854D0E),
+                  ),
+                ),
+                Text(
+                  isLive ? lang.tr('env_mode_live_desc') : lang.tr('env_mode_simulation_desc'),
+                  style: TextStyle(
+                    fontSize: 11,
+                    color: isLive ? const Color(0xFF166534) : const Color(0xFF713F12),
+                  ),
+                ),
+              ],
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
   Widget _buildTokenSelectorCard(BuildContext context, List<Token> tokens, LanguageController lang) {
     return CustomCard(
       padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
@@ -168,7 +232,7 @@ class _SendScreenState extends State<SendScreen> {
         onTap: () => _showTokenPickerSheet(context, tokens, lang),
         child: Row(
           children: [
-            CryptoIcon(networkId: _selectedToken?.symbol ?? 'ETH', size: 36),
+            CryptoIcon(networkId: _selectedToken?.symbol ?? 'POL', size: 36),
             const SizedBox(width: 12),
             Expanded(
               child: Column(
@@ -357,9 +421,9 @@ class _SendScreenState extends State<SendScreen> {
 
   Widget _buildGasFeeCard(BuildContext context, String nativeSymbol, LanguageController lang) {
     final speeds = [
-      {'title': lang.tr('slow_speed'), 'time': '≈ 1 min', 'gwei': '15 Gwei', 'fee': '0.0003 $nativeSymbol'},
-      {'title': lang.tr('standard_speed'), 'time': '≈ 15 sec', 'gwei': '30 Gwei', 'fee': '0.0006 $nativeSymbol'},
-      {'title': lang.tr('fast_speed'), 'time': '≈ 5 sec', 'gwei': '45 Gwei', 'fee': '0.0009 $nativeSymbol'},
+      {'title': lang.tr('slow_speed'), 'time': '≈ 1 min', 'gwei': '30 Gwei', 'fee': '0.0006 $nativeSymbol'},
+      {'title': lang.tr('standard_speed'), 'time': '≈ 15 sec', 'gwei': '40 Gwei', 'fee': '0.0008 $nativeSymbol'},
+      {'title': lang.tr('fast_speed'), 'time': '≈ 5 sec', 'gwei': '55 Gwei', 'fee': '0.0011 $nativeSymbol'},
     ];
 
     return CustomCard(
@@ -470,21 +534,24 @@ class _SendScreenState extends State<SendScreen> {
   void _handleConfirmSend(
     BuildContext context,
     Wallet activeWallet,
-    String networkName,
+    Network network,
     LanguageController lang,
+    EnvironmentController? envController,
   ) {
     final toAddress = _addressController.text.trim();
     final amount = double.tryParse(_amountController.text) ?? 0.0;
-    final assetController = context.read<AssetController>();
-    final networkController = context.read<NetworkController>();
-    final network = networkController.allNetworks.firstWhere(
-      (n) => n.id.toLowerCase() == activeWallet.networkId.toLowerCase(),
-      orElse: () => networkController.allNetworks.first,
-    );
+    final isLive = envController?.isLive ?? true;
 
     if (toAddress.isEmpty) {
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(content: Text(lang.tr('err_recipient_empty'))),
+      );
+      return;
+    }
+
+    if (!toAddress.startsWith('0x') || toAddress.length != 42) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Invalid EVM recipient address (must start with 0x and have 42 characters)')),
       );
       return;
     }
@@ -525,12 +592,32 @@ class _SendScreenState extends State<SendScreen> {
                   style: const TextStyle(fontSize: 17, fontWeight: FontWeight.w700),
                 ),
               ),
-              const SizedBox(height: 20),
-              _buildSummaryRow(lang.tr('contact_network'), networkName),
+              const SizedBox(height: 16),
+              if (isLive)
+                Container(
+                  padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+                  margin: const EdgeInsets.only(bottom: 12),
+                  decoration: BoxDecoration(
+                    color: const Color(0xFFF0FDF4),
+                    borderRadius: BorderRadius.circular(8),
+                    border: Border.all(color: const Color(0xFFBBF7D0)),
+                  ),
+                  child: Row(
+                    children: [
+                      const Icon(Icons.circle, size: 8, color: Color(0xFF16A34A)),
+                      const SizedBox(width: 6),
+                      Text(
+                        'Polygon Mainnet (Chain ID 137) - On-Chain Live Broadcast',
+                        style: const TextStyle(fontSize: 11, fontWeight: FontWeight.w700, color: Color(0xFF15803D)),
+                      ),
+                    ],
+                  ),
+                ),
+              _buildSummaryRow(lang.tr('contact_network'), network.name),
               _buildSummaryRow(lang.tr('from_label'), Formatters.formatAddress(activeWallet.address)),
               _buildSummaryRow(lang.tr('to_label'), Formatters.formatAddress(toAddress)),
               _buildSummaryRow(lang.tr('amount'), '$amount ${_selectedToken?.symbol ?? ''}'),
-              _buildSummaryRow(lang.tr('gas_fee_label'), '0.0006 ${network.symbol}'),
+              _buildSummaryRow(lang.tr('gas_fee_label'), '≈ 0.0008 ${network.symbol}'),
               const Divider(height: 24, color: Color(0xFFF1F5F9)),
               SizedBox(
                 width: double.infinity,
@@ -542,34 +629,329 @@ class _SendScreenState extends State<SendScreen> {
                   ),
                   onPressed: () async {
                     Navigator.of(ctx).pop();
-                    setState(() => _isSending = true);
-                    await Future.delayed(const Duration(milliseconds: 600));
-                    if (mounted) {
-                      if (_selectedToken != null) {
-                        final newBal = (_selectedToken!.balance - amount).clamp(0.0, double.infinity);
-                        await assetController.updateBalance(
-                          network: network,
-                          walletAddress: activeWallet.address,
-                          walletId: activeWallet.id,
-                          tokenSymbol: _selectedToken!.symbol,
-                          newBalance: newBal,
-                        );
-                      }
-                      setState(() => _isSending = false);
-                      Navigator.of(context).pop();
-                      ScaffoldMessenger.of(context).showSnackBar(
-                        SnackBar(
-                          content: Text(lang.tr('tx_broadcast_success')),
-                          backgroundColor: const Color(0xFF10B981),
-                        ),
-                      );
-                    }
+                    await _executeSendTransaction(context, activeWallet, network, toAddress, amount, isLive, lang);
                   },
                   child: Text(
                     lang.tr('confirm'),
                     style: const TextStyle(color: Colors.white, fontWeight: FontWeight.w600, fontSize: 16),
                   ),
                 ),
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+
+  Future<void> _executeSendTransaction(
+    BuildContext context,
+    Wallet activeWallet,
+    Network network,
+    String toAddress,
+    double amount,
+    bool isLive,
+    LanguageController lang,
+  ) async {
+    setState(() => _isSending = true);
+
+    final walletController = context.read<WalletController>();
+    final assetController = context.read<AssetController>();
+    IOnChainTransactionService onChainService;
+    try {
+      onChainService = context.read<IOnChainTransactionService>();
+    } catch (_) {
+      onChainService = OnChainTransactionService();
+    }
+    ICryptoKeyService cryptoKeyService;
+    try {
+      cryptoKeyService = context.read<ICryptoKeyService>();
+    } catch (_) {
+      cryptoKeyService = CryptoKeyService();
+    }
+
+    String txHash = '';
+    String explorerUrl = '';
+    bool success = false;
+    String? error;
+
+    try {
+      if (isLive) {
+        // 1. Retrieve wallet secret
+        final secret = await walletController.getWalletSecret(activeWallet.id);
+        if (secret == null || secret.isEmpty) {
+          throw Exception('Wallet private key not found or wallet is watch-only');
+        }
+
+        // 2. Derive private key
+        String privateKeyHex;
+        if (cryptoKeyService.validateMnemonic(secret)) {
+          privateKeyHex = cryptoKeyService.deriveFromMnemonic(secret).privateKeyHex;
+        } else if (cryptoKeyService.validatePrivateKey(secret)) {
+          privateKeyHex = cryptoKeyService.deriveFromPrivateKey(secret).privateKeyHex;
+        } else {
+          privateKeyHex = secret;
+        }
+
+        // 3. Send on-chain transaction
+        final token = _selectedToken;
+        OnChainTxResult res;
+        if (token != null && !token.isNative && token.contractAddress != null) {
+          res = await onChainService.sendErc20Transfer(
+            network: network,
+            privateKeyHex: privateKeyHex,
+            tokenContractAddress: token.contractAddress!,
+            toAddress: toAddress,
+            amount: amount,
+            decimals: token.decimals,
+            gasSpeedMultiplier: _gasSpeed,
+          );
+        } else {
+          res = await onChainService.sendNativeTransfer(
+            network: network,
+            privateKeyHex: privateKeyHex,
+            toAddress: toAddress,
+            amount: amount,
+            gasSpeedMultiplier: _gasSpeed,
+          );
+        }
+
+        if (res.isSuccess && res.txHash != null) {
+          txHash = res.txHash!;
+          explorerUrl = res.explorerUrl ?? onChainService.getExplorerTxUrl(network, txHash);
+          success = true;
+
+          // Update balance and refresh on-chain balances
+          if (token != null) {
+            final newBal = (token.balance - amount).clamp(0.0, double.infinity);
+            await assetController.updateBalance(
+              network: network,
+              walletAddress: activeWallet.address,
+              walletId: activeWallet.id,
+              tokenSymbol: token.symbol,
+              newBalance: newBal,
+            );
+          }
+          // Trigger on-chain balance refresh
+          assetController.loadAssets(network: network, walletAddress: activeWallet.address, walletId: activeWallet.id, forceRefresh: true);
+        } else {
+          error = res.errorMessage ?? 'On-chain broadcast failed';
+        }
+      } else {
+        // Simulation mode
+        await Future.delayed(const Duration(milliseconds: 600));
+        final pseudoHash = '0x${DateTime.now().millisecondsSinceEpoch.toRadixString(16)}abcdef1234567890abcdef1234567890abcdef1234567890';
+        txHash = pseudoHash;
+        explorerUrl = onChainService.getExplorerTxUrl(network, txHash);
+        success = true;
+
+        if (_selectedToken != null) {
+          final newBal = (_selectedToken!.balance - amount).clamp(0.0, double.infinity);
+          await assetController.updateBalance(
+            network: network,
+            walletAddress: activeWallet.address,
+            walletId: activeWallet.id,
+            tokenSymbol: _selectedToken!.symbol,
+            newBalance: newBal,
+          );
+        }
+      }
+    } catch (e) {
+      error = e.toString().replaceAll('Exception: ', '');
+    } finally {
+      if (mounted) {
+        setState(() => _isSending = false);
+      }
+    }
+
+    if (!mounted) return;
+
+    if (success && txHash.isNotEmpty) {
+      _showTransactionReceiptModal(context, network, toAddress, amount, txHash, explorerUrl, isLive, lang);
+    } else {
+      showDialog(
+        context: context,
+        builder: (ctx) => AlertDialog(
+          title: Row(
+            children: [
+              const Icon(Icons.error_outline_rounded, color: Color(0xFFEF4444)),
+              const SizedBox(width: 8),
+              Text(lang.tr('tx_broadcast_failed'), style: const TextStyle(fontSize: 16, fontWeight: FontWeight.w700)),
+            ],
+          ),
+          content: Text(
+            error ?? 'Unknown error occurred while broadcasting transaction.',
+            style: const TextStyle(fontSize: 14, color: Color(0xFF334155)),
+          ),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.of(ctx).pop(),
+              child: Text(lang.tr('btn_confirm')),
+            ),
+          ],
+        ),
+      );
+    }
+  }
+
+  void _showTransactionReceiptModal(
+    BuildContext context,
+    Network network,
+    String toAddress,
+    double amount,
+    String txHash,
+    String explorerUrl,
+    bool isLive,
+    LanguageController lang,
+  ) {
+    showModalBottomSheet(
+      context: context,
+      isDismissible: false,
+      enableDrag: false,
+      backgroundColor: Colors.white,
+      shape: const RoundedRectangleBorder(
+        borderRadius: BorderRadius.vertical(top: Radius.circular(24)),
+      ),
+      builder: (ctx) => SafeArea(
+        child: Padding(
+          padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 24),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              Container(
+                width: 60,
+                height: 60,
+                decoration: const BoxDecoration(
+                  color: Color(0xFFECFDF5),
+                  shape: BoxShape.circle,
+                ),
+                child: const Icon(Icons.check_circle_rounded, color: Color(0xFF10B981), size: 36),
+              ),
+              const SizedBox(height: 12),
+              Text(
+                lang.tr('tx_success_title'),
+                style: const TextStyle(fontSize: 18, fontWeight: FontWeight.w800, color: Color(0xFF0F172A)),
+              ),
+              const SizedBox(height: 6),
+              Text(
+                '$amount ${_selectedToken?.symbol ?? ''} ➔ ${Formatters.formatAddress(toAddress)}',
+                style: const TextStyle(fontSize: 14, fontWeight: FontWeight.w600, color: Color(0xFF64748B)),
+              ),
+              const SizedBox(height: 16),
+              Container(
+                padding: const EdgeInsets.all(14),
+                decoration: BoxDecoration(
+                  color: const Color(0xFFF8FAFC),
+                  borderRadius: BorderRadius.circular(14),
+                  border: Border.all(color: const Color(0xFFE2E8F0)),
+                ),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Row(
+                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                      children: [
+                        Text(
+                          lang.tr('tx_hash_label'),
+                          style: const TextStyle(fontSize: 12, fontWeight: FontWeight.w600, color: Color(0xFF64748B)),
+                        ),
+                        Container(
+                          padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+                          decoration: BoxDecoration(
+                            color: isLive ? const Color(0xFFDCFCE7) : const Color(0xFFFEF08A),
+                            borderRadius: BorderRadius.circular(6),
+                          ),
+                          child: Text(
+                            isLive ? 'Polygon Mainnet' : 'Sandbox',
+                            style: TextStyle(
+                              fontSize: 10,
+                              fontWeight: FontWeight.w700,
+                              color: isLive ? const Color(0xFF15803D) : const Color(0xFF854D0E),
+                            ),
+                          ),
+                        ),
+                      ],
+                    ),
+                    const SizedBox(height: 8),
+                    Row(
+                      children: [
+                        Expanded(
+                          child: Text(
+                            txHash,
+                            style: const TextStyle(
+                              fontSize: 12,
+                              fontFamily: 'monospace',
+                              fontWeight: FontWeight.w600,
+                              color: Color(0xFF1E293B),
+                            ),
+                            maxLines: 2,
+                            overflow: TextOverflow.ellipsis,
+                          ),
+                        ),
+                        IconButton(
+                          icon: const Icon(Icons.copy_rounded, size: 18, color: Color(0xFF2563EB)),
+                          tooltip: lang.tr('copy_tx_hash'),
+                          onPressed: () {
+                            Clipboard.setData(ClipboardData(text: txHash));
+                            ScaffoldMessenger.of(context).showSnackBar(
+                              SnackBar(
+                                content: Text(lang.tr('copied_tx_hash')),
+                                duration: const Duration(seconds: 2),
+                              ),
+                            );
+                          },
+                        ),
+                      ],
+                    ),
+                  ],
+                ),
+              ),
+              const SizedBox(height: 16),
+              Row(
+                children: [
+                  Expanded(
+                    child: OutlinedButton.icon(
+                      style: OutlinedButton.styleFrom(
+                        padding: const EdgeInsets.symmetric(vertical: 12),
+                        side: const BorderSide(color: Color(0xFF2563EB)),
+                        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                      ),
+                      icon: const Icon(Icons.open_in_new_rounded, size: 16, color: Color(0xFF2563EB)),
+                      label: Text(
+                        lang.tr('view_on_explorer'),
+                        style: const TextStyle(color: Color(0xFF2563EB), fontWeight: FontWeight.w700, fontSize: 13),
+                      ),
+                      onPressed: () {
+                        Clipboard.setData(ClipboardData(text: explorerUrl));
+                        ScaffoldMessenger.of(context).showSnackBar(
+                          SnackBar(
+                            content: Text('Explorer link copied: $explorerUrl'),
+                            duration: const Duration(seconds: 3),
+                          ),
+                        );
+                      },
+                    ),
+                  ),
+                  const SizedBox(width: 10),
+                  Expanded(
+                    child: ElevatedButton(
+                      style: ElevatedButton.styleFrom(
+                        backgroundColor: const Color(0xFF2563EB),
+                        padding: const EdgeInsets.symmetric(vertical: 12),
+                        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                        elevation: 0,
+                      ),
+                      onPressed: () {
+                        Navigator.of(ctx).pop();
+                        Navigator.of(context).pop();
+                      },
+                      child: Text(
+                        lang.tr('btn_confirm'),
+                        style: const TextStyle(color: Colors.white, fontWeight: FontWeight.w700, fontSize: 14),
+                      ),
+                    ),
+                  ),
+                ],
               ),
             ],
           ),

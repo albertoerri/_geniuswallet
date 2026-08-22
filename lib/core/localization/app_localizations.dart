@@ -377,6 +377,24 @@ class AppStrings {
       // Swap Updates
       'swap_swapped_success': 'Swapped {fromAmount} {fromToken} to {toAmount} {toToken}!',
       'rates_updated': 'Exchange rates updated',
+
+      // Environment & On-Chain Keys
+      'env_mode_title': 'Environment Settings',
+      'env_mode_live': 'Polygon Mainnet (Live)',
+      'env_mode_live_desc': 'Broadcasts real transactions to Polygon blockchain (Requires Gas)',
+      'env_mode_simulation': 'Simulation Mode (Sandbox)',
+      'env_mode_simulation_desc': 'Local simulation mode for testing without gas',
+      'env_badge_live': 'LIVE MAINNET',
+      'env_badge_sim': 'SIMULATION',
+      'tx_hash_label': 'Transaction Hash (TxHash)',
+      'view_on_explorer': 'View on PolygonScan',
+      'copy_tx_hash': 'Copy TxHash',
+      'copied_tx_hash': 'Transaction hash copied!',
+      'tx_broadcast_failed': 'Transaction Broadcast Failed',
+      'tx_broadcasting': 'Signing & Broadcasting to Polygon...',
+      'tx_success_title': 'On-Chain Broadcast Successful',
+      'tx_nonce_label': 'Nonce',
+      'tx_gas_price_label': 'Gas Price',
     },
     'zh': {
       // Navigation Tabs
@@ -755,6 +773,24 @@ class AppStrings {
       'explore_nft': '探索精选 NFT 市场',
       'token_details': '代币详情',
       'view_in_explorer': '区块浏览器',
+
+      // Environment & On-Chain Keys
+      'env_mode_title': '运行环境设置',
+      'env_mode_live': 'Polygon 真实主网 (Live)',
+      'env_mode_live_desc': '连接真实 Polygon 链上广播（需要真实 Gas）',
+      'env_mode_simulation': '模拟测试模式 (Sandbox)',
+      'env_mode_simulation_desc': '本地模拟模式（无须消耗真实 Gas，适合测试）',
+      'env_badge_live': '主网实时',
+      'env_badge_sim': '模拟测试',
+      'tx_hash_label': '链上交易哈希 (TxHash)',
+      'view_on_explorer': '在 PolygonScan 上查看',
+      'copy_tx_hash': '复制交易哈希',
+      'copied_tx_hash': '交易哈希已复制到剪贴板！',
+      'tx_broadcast_failed': '链上交易广播失败',
+      'tx_broadcasting': '正在签名并广播至 Polygon 主网...',
+      'tx_success_title': '链上交易广播成功',
+      'tx_nonce_label': 'Nonce',
+      'tx_gas_price_label': 'Gas 费率',
     },
   };
 
